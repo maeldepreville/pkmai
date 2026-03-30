@@ -38,7 +38,7 @@ graph LR
 Clone the repository and install the backend as an editable package using `uv`:
 
 ```bash
-git clone [https://github.com/maeldepreville/pkmai.git](https://github.com/maeldepreville/pkmai.git)
+git clone https://github.com/maeldepreville/pkmai.git
 cd pkmai
 uv sync
 ```
