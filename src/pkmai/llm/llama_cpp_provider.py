@@ -29,13 +29,16 @@ class LlamaCppProvider(BaseLLM):
 
         logging.info("Starting LLM generation...")
 
-        response = cast(dict[str, Any], self.llm.create_chat_completion(
-            messages=cast(list[Any], messages),
-            max_tokens=max_tokens,
-            temperature=temperature,
-            repeat_penalty=repeat_penalty,
-            response_format={"type": "json_object"} 
-        ))
+        response = cast(
+            dict[str, Any],
+            self.llm.create_chat_completion(
+                messages=cast(list[Any], messages),
+                max_tokens=max_tokens,
+                temperature=temperature,
+                repeat_penalty=repeat_penalty,
+                response_format={"type": "json_object"},
+            ),
+        )
 
         logging.info("Successfully generated LLM response.")
 
