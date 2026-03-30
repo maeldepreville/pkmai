@@ -27,7 +27,7 @@ graph LR
 
 ## Prerequisites
 
-- **Python 3.10+** (Package management via uv recommended)
+- **Python 3.10+** (Package management via [uv](https://github.com/astral-sh/uv) recommended)
 - **Node.js & npm** (For compiling the Obsidian plugin)
 - A local `.gguf` LLM (e.g., Llama 3, Mistral) downloaded to your machine.
 
