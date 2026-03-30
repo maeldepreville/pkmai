@@ -33,7 +33,7 @@ graph LR
 
 ## Installation
 
-1. Backend (Python Server)
+**1. Backend (Python Server)**
 
 Clone the repository and install the backend as an editable package using `uv`:
 
@@ -49,7 +49,7 @@ Copy the example configuration file and update the paths to point to your vault 
 cp config.example.yaml config.yaml
 ```
 
-2. Frontend (Obsidian Plugin)
+**2. Frontend (Obsidian Plugin)**
 
 Navigate to your Obsidian vault's plugin directory and build the bridge:
 
