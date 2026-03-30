@@ -6,7 +6,13 @@ import numpy as np
 
 from pkmai.core.config import Config, load_config
 from pkmai.core.logger import setup_logging
-from pkmai.core.utils import clean_note_text, is_ignored, sha256_text, strip_section, replace_or_append_section
+from pkmai.core.utils import (
+    clean_note_text,
+    is_ignored,
+    sha256_text,
+    strip_section,
+    replace_or_append_section,
+)
 from pkmai.db.connection import init_embed_db
 from pkmai.db.embed_cache import (
     delete_missing_embed_entries,
@@ -31,15 +37,18 @@ class NoteRecord:
 # Link-Specific Utilities
 # =========================
 
+
 def has_wikilink_to(text: str, target_title: str) -> bool:
-    pattern = re.compile(rf"\[\[{re.escape(target_title)}(?:\|[^\]]+)?\]\]", flags=re.IGNORECASE)
+    pattern = re.compile(
+        rf"\[\[{re.escape(target_title)}(?:\|[^\]]+)?\]\]", flags=re.IGNORECASE
+    )
     return bool(pattern.search(text))
 
 
 def related_section_pattern(section_title: str) -> re.Pattern[str]:
     return re.compile(
         rf"\n## {re.escape(section_title)}\n(?:- \[\[[^\]]+\]\]\n?)*",
-        flags=re.MULTILINE | re.IGNORECASE
+        flags=re.MULTILINE | re.IGNORECASE,
     )
 
 
@@ -50,6 +59,7 @@ def strip_existing_related_section(text: str, section_title: str) -> str:
 # =========================
 # Vault loading
 # =========================
+
 
 def find_note_files(cfg: Config) -> list[Path]:
     files: list[Path] = []
@@ -62,7 +72,9 @@ def find_note_files(cfg: Config) -> list[Path]:
 
 def load_note_record(path: Path, vault_path: Path, cfg: Config) -> NoteRecord | None:
     raw = path.read_text(encoding="utf-8")
-    clean = clean_note_text(raw, cfg.author_mirror_section_title, cfg.link_section_title)
+    clean = clean_note_text(
+        raw, cfg.author_mirror_section_title, cfg.link_section_title
+    )
 
     if len(clean) < cfg.link_min_note_chars:
         return None
@@ -74,7 +86,7 @@ def load_note_record(path: Path, vault_path: Path, cfg: Config) -> NoteRecord | 
         raw_text=raw,
         clean_text=clean,
         text_hash=sha256_text(clean),
-        mtime_ns=path.stat().st_mtime_ns
+        mtime_ns=path.stat().st_mtime_ns,
     )
 
 
@@ -82,10 +94,9 @@ def load_note_record(path: Path, vault_path: Path, cfg: Config) -> NoteRecord | 
 # Embeddings & Similarity
 # =========================
 
+
 def get_or_compute_embeddings(
-    conn,
-    embedder: LocalEmbedder,
-    notes: list[NoteRecord]
+    conn, embedder: LocalEmbedder, notes: list[NoteRecord]
 ) -> dict[str, np.ndarray]:
     result: dict[str, np.ndarray] = {}
     to_compute: list[NoteRecord] = []
@@ -116,7 +127,7 @@ def get_or_compute_embeddings(
                 title=note.title,
                 text_hash=note.text_hash,
                 mtime_ns=note.mtime_ns,
-                embedding=emb
+                embedding=emb,
             )
             result[note.rel_path] = emb
 
@@ -127,9 +138,11 @@ def compute_related_notes(
     notes: list[NoteRecord],
     embeddings_by_path: dict[str, np.ndarray],
     similarity_threshold: float,
-    max_links_per_note: int
+    max_links_per_note: int,
 ) -> dict[str, list[tuple[str, float]]]:
-    ordered_embeddings = np.stack([embeddings_by_path[n.rel_path] for n in notes], axis=0)
+    ordered_embeddings = np.stack(
+        [embeddings_by_path[n.rel_path] for n in notes], axis=0
+    )
     sim = LocalEmbedder.cosine_sim_matrix(ordered_embeddings)
 
     related: dict[str, list[tuple[str, float]]] = {}
@@ -153,15 +166,13 @@ def compute_related_notes(
 # Link insertion logic
 # =========================
 
+
 def build_title_index(notes: list[NoteRecord]) -> dict[str, str]:
     return {n.rel_path: n.title for n in notes}
 
 
 def insert_related_section(
-    note: NoteRecord,
-    related_paths: list[str],
-    title_index: dict[str, str],
-    cfg: Config
+    note: NoteRecord, related_paths: list[str], title_index: dict[str, str], cfg: Config
 ) -> str:
     core_text = strip_section(note.raw_text, cfg.link_section_title)
     links = []
@@ -175,9 +186,9 @@ def insert_related_section(
         return note.raw_text.strip()
 
     return replace_or_append_section(
-        text=note.raw_text.replace("\r\n", "\n"), 
-        title=cfg.link_section_title, 
-        links=links
+        text=note.raw_text.replace("\r\n", "\n"),
+        title=cfg.link_section_title,
+        links=links,
     )
 
 
@@ -193,6 +204,7 @@ def update_note_file(path: Path, new_text: str) -> bool:
 # =========================
 # Main Orchestrator
 # =========================
+
 
 def main() -> None:
     cfg = load_config()
@@ -225,13 +237,13 @@ def main() -> None:
         return
 
     embedder = LocalEmbedder(cfg.link_model_name)
-    
+
     embeddings_by_path = get_or_compute_embeddings(conn, embedder, notes)
     related = compute_related_notes(
         notes=notes,
         embeddings_by_path=embeddings_by_path,
         similarity_threshold=cfg.link_similarity_threshold,
-        max_links_per_note=cfg.max_links_per_note
+        max_links_per_note=cfg.max_links_per_note,
     )
     title_index = build_title_index(notes)
 
@@ -243,10 +255,7 @@ def main() -> None:
 
         try:
             new_text = insert_related_section(
-                note=note,
-                related_paths=related_paths,
-                title_index=title_index,
-                cfg=cfg
+                note=note, related_paths=related_paths, title_index=title_index, cfg=cfg
             )
 
             changed = update_note_file(note.path, new_text)

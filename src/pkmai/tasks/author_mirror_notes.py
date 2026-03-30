@@ -5,10 +5,10 @@ from typing import Any
 from pkmai.core.config import Config, load_config
 from pkmai.core.logger import setup_logging
 from pkmai.core.utils import (
-    clean_note_text, 
-    is_ignored, 
-    sha256_text, 
-    replace_or_append_section
+    clean_note_text,
+    is_ignored,
+    sha256_text,
+    replace_or_append_section,
 )
 from pkmai.db.connection import init_author_db
 from pkmai.db.author_cache import (
@@ -22,6 +22,7 @@ from pkmai.llm.llama_cpp_provider import LlamaCppProvider
 # =========================
 # File Paths & Linking
 # =========================
+
 
 def get_notes_root_path(cfg: Config) -> Path:
     return (cfg.vault_path / cfg.notes_root_dir).resolve()
@@ -58,17 +59,19 @@ def get_mirror_path(cfg: Config, source_title: str) -> Path:
     return mirror_dir / filename
 
 
-def add_mirror_link_to_source(source_path: Path, mirror_rel_path: str, cfg: Config) -> None:
+def add_mirror_link_to_source(
+    source_path: Path, mirror_rel_path: str, cfg: Config
+) -> None:
     original = source_path.read_text(encoding="utf-8").replace("\r\n", "\n")
-    mirror_filename = mirror_rel_path.replace("\\", "/").replace(".md", "").rsplit('/', 1)[-1]
-    link = f"- [[{mirror_filename}]]"
-    
-    updated = replace_or_append_section(
-        text=original, 
-        title=cfg.author_mirror_section_title, 
-        links=[link]
+    mirror_filename = (
+        mirror_rel_path.replace("\\", "/").replace(".md", "").rsplit("/", 1)[-1]
     )
-    
+    link = f"- [[{mirror_filename}]]"
+
+    updated = replace_or_append_section(
+        text=original, title=cfg.author_mirror_section_title, links=[link]
+    )
+
     updated = updated.strip() + "\n"
 
     if updated != original:
@@ -78,6 +81,7 @@ def add_mirror_link_to_source(source_path: Path, mirror_rel_path: str, cfg: Conf
 # =========================
 # AI Prompt & Output Formatting
 # =========================
+
 
 def get_messages(source_title: str, source_text: str) -> list[dict[str, str]]:
     system_instruction = """Tu dois analyser une note personnelle et proposer DEUX auteurs, philosophes, penseurs ou essayistes réels pour former une dynamique de THÈSE et d'ANTITHÈSE autour du contenu de cette note.
@@ -113,11 +117,13 @@ Format attendu (JSON STRICT ET PLAT) :
   "mots_cles": ["mot-clé 1", "mot-clé 2"]
 }"""
 
-    user_content = f"Titre de la note :\n{source_title}\n\nContenu de la note :\n{source_text}"
+    user_content = (
+        f"Titre de la note :\n{source_title}\n\nContenu de la note :\n{source_text}"
+    )
 
     return [
         {"role": "system", "content": system_instruction},
-        {"role": "user", "content": user_content}
+        {"role": "user", "content": user_content},
     ]
 
 
@@ -142,10 +148,14 @@ def sanitize_list(value: Any) -> list[str]:
 
 def normalize_result(data: dict[str, Any]) -> dict[str, Any]:
     these_auteur = sanitize_field(data.get("these_auteur") or data.get("These_auteur"))
-    anti_auteur = sanitize_field(data.get("antithese_auteur") or data.get("Antithese_auteur"))
+    anti_auteur = sanitize_field(
+        data.get("antithese_auteur") or data.get("Antithese_auteur")
+    )
 
     if not these_auteur or not anti_auteur:
-        raise ValueError(f"Auteurs manquants. Le modèle a généré ces clés : {list(data.keys())}")
+        raise ValueError(
+            f"Auteurs manquants. Le modèle a généré ces clés : {list(data.keys())}"
+        )
 
     def clean_confidence(val: Any) -> str:
         c = sanitize_field(val).lower()
@@ -156,22 +166,28 @@ def normalize_result(data: dict[str, Any]) -> dict[str, Any]:
         "œuvres": sanitize_list(data.get("these_oeuvres") or data.get("these_œuvres")),
         "confiance": clean_confidence(data.get("these_confiance")),
         "pourquoi_cet_auteur": sanitize_field(data.get("these_pourquoi")),
-        "synthèse": sanitize_field(data.get("these_synthese") or data.get("these_synthèse")),
+        "synthèse": sanitize_field(
+            data.get("these_synthese") or data.get("these_synthèse")
+        ),
         "warnings": sanitize_field(data.get("these_warnings")),
     }
     antithese_data = {
         "auteur": anti_auteur,
-        "œuvres": sanitize_list(data.get("antithese_oeuvres") or data.get("antithese_œuvres")),
+        "œuvres": sanitize_list(
+            data.get("antithese_oeuvres") or data.get("antithese_œuvres")
+        ),
         "confiance": clean_confidence(data.get("antithese_confiance")),
         "pourquoi_cet_auteur": sanitize_field(data.get("antithese_pourquoi")),
-        "synthèse": sanitize_field(data.get("antithese_synthese") or data.get("antithese_synthèse")),
+        "synthèse": sanitize_field(
+            data.get("antithese_synthese") or data.get("antithese_synthèse")
+        ),
         "warnings": sanitize_field(data.get("antithese_warnings")),
     }
 
     return {
         "these": these_data,
         "antithese": antithese_data,
-        "mots_clés": sanitize_list(data.get("mots_cles") or data.get("mots_clés"))
+        "mots_clés": sanitize_list(data.get("mots_cles") or data.get("mots_clés")),
     }
 
 
@@ -193,18 +209,18 @@ def render_markdown(source_title: str, data: dict[str, Any]) -> str:
             "",
             "### Réserves",
             block["warnings"] or "Aucune réserve quant à la proposition.",
-            ""
+            "",
         ]
 
     parts = [
         "",
-        f"Note source : [[{source_title}]]",        
+        f"Note source : [[{source_title}]]",
         f"Mots-clés : {keywords}",
         "",
         "---",
-        ""
+        "",
     ]
-    
+
     parts.extend(format_author_section("Thèse", data["these"]))
     parts.extend(["---", ""])
     parts.extend(format_author_section("Antithèse", data["antithese"]))
@@ -216,6 +232,7 @@ def render_markdown(source_title: str, data: dict[str, Any]) -> str:
 # Main Orchestrator
 # =========================
 
+
 def main() -> None:
     cfg = load_config()
     setup_logging(prefix="author_mirror")
@@ -225,7 +242,7 @@ def main() -> None:
     llm_provider = LlamaCppProvider(
         model_path=cfg.author_model_path,
         n_ctx=cfg.author_n_ctx,
-        n_threads=cfg.author_n_threads
+        n_threads=cfg.author_n_threads,
     )
 
     files = get_note_files(cfg)
@@ -246,7 +263,9 @@ def main() -> None:
 
         try:
             raw = path.read_text(encoding="utf-8")
-            source_text = clean_note_text(raw, cfg.author_mirror_section_title, cfg.link_section_title)
+            source_text = clean_note_text(
+                raw, cfg.author_mirror_section_title, cfg.link_section_title
+            )
             if len(source_text) < cfg.author_min_chars:
                 skipped += 1
                 logging.info("Skipped (too short): %s", source_title)
@@ -263,9 +282,15 @@ def main() -> None:
                 logging.info("Skipped (unchanged): %s", source_title)
                 continue
 
-            if target_path.exists() and not cfg.author_overwrite_existing and cached_hash is None:
+            if (
+                target_path.exists()
+                and not cfg.author_overwrite_existing
+                and cached_hash is None
+            ):
                 skipped += 1
-                logging.info("Skipped (mirror exists, no cache history): %s", source_title)
+                logging.info(
+                    "Skipped (mirror exists, no cache history): %s", source_title
+                )
                 continue
 
             # Generate JSON using our provider and the specific config settings
@@ -274,15 +299,15 @@ def main() -> None:
                 messages=messages,
                 max_tokens=cfg.author_max_tokens,
                 temperature=cfg.author_temperature,
-                repeat_penalty=cfg.author_repeat_penalty
+                repeat_penalty=cfg.author_repeat_penalty,
             )
-            
+
             result = normalize_result(raw_result)
             md = render_markdown(source_title, result)
 
             existed_before = target_path.exists()
             target_path.write_text(md, encoding="utf-8", newline="\n")
-            
+
             mirror_rel_path = target_path.relative_to(cfg.vault_path).as_posix()
             add_mirror_link_to_source(path, mirror_rel_path, cfg)
 
@@ -313,6 +338,7 @@ def main() -> None:
         skipped_unchanged,
         failed,
     )
+
 
 if __name__ == "__main__":
     main()

@@ -3,12 +3,12 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-import logging
 
 
 # =========================
 # Utilities
 # =========================
+
 
 def sha256_text(text: str) -> str:
     """Returns the SHA-256 hash of a string."""
@@ -55,7 +55,12 @@ def replace_or_append_section(text: str, title: str, links: list[str]) -> str:
     new_section = f"## {title}\n" + "\n".join(links)
     pattern = rf"^## {re.escape(title)}[ \t]*\n(?:-[ \t]*\[\[.*?\]\][ \t]*(?:\n|$))*"
     if re.search(pattern, text, flags=re.IGNORECASE | re.MULTILINE):
-        updated = re.sub(pattern, lambda _: new_section + "\n", text, flags=re.IGNORECASE | re.MULTILINE)
+        updated = re.sub(
+            pattern,
+            lambda _: new_section + "\n",
+            text,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
     else:
         updated = text.strip() + "\n\n" + new_section
     updated = re.sub(r"\n{3,}", "\n\n", updated)

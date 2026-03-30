@@ -41,11 +41,13 @@ def upsert_author_cache(
     conn.commit()
 
 
-def delete_missing_author_entries(conn: sqlite3.Connection, existing_rel_paths: set[str]) -> None:
+def delete_missing_author_entries(
+    conn: sqlite3.Connection, existing_rel_paths: set[str]
+) -> None:
     """Cleans up the database by removing entries for notes that were deleted from the vault."""
     cur = conn.execute("SELECT rel_path FROM author_mirror_cache")
     cached_paths = {row[0] for row in cur.fetchall()}
-    
+
     to_delete = cached_paths - existing_rel_paths
     if to_delete:
         conn.executemany(

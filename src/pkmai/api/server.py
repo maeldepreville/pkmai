@@ -1,4 +1,4 @@
-from fastapi import FastAPI, BackgroundTasks        # BackgroundTasks to avoid freezing the UI
+from fastapi import FastAPI, BackgroundTasks  # BackgroundTasks to avoid freezing the UI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -23,18 +23,30 @@ app.add_middleware(
 
 @app.get("/health")
 async def health_check():
-    return JSONResponse(content={"status": "online", "message": "PKM AI Server is ready."})
+    return JSONResponse(
+        content={"status": "online", "message": "PKM AI Server is ready."}
+    )
 
 
 @app.post("/api/v1/mirror/sync")
 async def sync_mirrors(background_tasks: BackgroundTasks):
     """Triggers the Author Mirror vault sync in the background."""
     background_tasks.add_task(author_mirror_notes.main)
-    return JSONResponse(content={"status": "accepted", "message": "Author Mirror sync started in the background."})
+    return JSONResponse(
+        content={
+            "status": "accepted",
+            "message": "Author Mirror sync started in the background.",
+        }
+    )
 
 
 @app.post("/api/v1/links/sync")
 async def sync_links(background_tasks: BackgroundTasks):
     """Triggers the Auto-Links vault sync in the background."""
     background_tasks.add_task(auto_links.main)
-    return JSONResponse(content={"status": "accepted", "message": "Auto-Links sync started in the background."})
+    return JSONResponse(
+        content={
+            "status": "accepted",
+            "message": "Auto-Links sync started in the background.",
+        }
+    )

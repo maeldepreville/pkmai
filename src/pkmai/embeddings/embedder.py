@@ -5,14 +5,13 @@ from sentence_transformers import SentenceTransformer
 
 class LocalEmbedder:
     """
-    A wrapper class for SentenceTransformers to handle text embeddings 
+    A wrapper class for SentenceTransformers to handle text embeddings
     and similarity calculations.
     """
 
     def __init__(self, model_name: str):
         logging.info("Loading embedding model: %s", model_name)
         self.model = SentenceTransformer(model_name)
-
 
     def encode_texts(self, texts: list[str], show_progress: bool = True) -> np.ndarray:
         """
@@ -25,10 +24,9 @@ class LocalEmbedder:
             texts,
             normalize_embeddings=True,
             convert_to_numpy=True,
-            show_progress_bar=show_progress
+            show_progress_bar=show_progress,
         )
         return np.asarray(embeddings, dtype=np.float32)
-
 
     @staticmethod
     def cosine_sim_matrix(embeddings: np.ndarray) -> np.ndarray:

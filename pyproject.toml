@@ -28,5 +28,12 @@ dependencies = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "ruff>=0.15.8",
+    "types-pyyaml>=6.0.12.20250915",
+]
+
 [project.scripts]
 pkmai = "pkmai.cli:app"
