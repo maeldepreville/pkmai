@@ -2,7 +2,7 @@
 
 Local, private AI orchestration for Personal Knowledge Management (PKM). 
 
-This project bridges a local Python backend with an Obsidian frontend, allowing you to enrich your markdown vault using local Large Language Models (LLMs) and vector embeddings—entirely offline and without subscription APIs.
+This project bridges a local Python backend with an Obsidian frontend, allowing you to enrich your markdown vault using local Large Language Models (LLMs) and vector embeddings ; entirely offline and without subscription APIs.
 
 ## Features
 
@@ -40,6 +40,7 @@ Clone the repository and install the backend as an editable package using `uv`:
 ```bash
 git clone https://github.com/maeldepreville/pkmai.git
 cd pkmai
+pip install uv
 uv sync
 ```
 
