@@ -17,6 +17,7 @@ class Config:
     ignored_dirs: list[str]
     notes_root_dir: str
 
+    author_mirror_enabled: bool
     author_mirror_dir: str
     author_mirror_prefix: str
     author_mirror_section_title: str
@@ -31,6 +32,7 @@ class Config:
     author_overwrite_existing: bool
     author_cache_db_path: Path
 
+    link_enabled: bool
     link_model_name: str
     link_similarity_threshold: float
     max_links_per_note: int
@@ -41,14 +43,24 @@ class Config:
     link_insert_only_if_missing: bool
 
 
-def load_config(config_path: Path = CONFIG_PATH) -> Config:
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f)
+def load_config(config_path: Path = CONFIG_PATH, override_dict: dict | None = None) -> Config:
+    raw = {}
+    
+    if override_dict:
+        raw = override_dict
+    else:
+        if config_path.exists():
+            with open(config_path, "r", encoding="utf-8") as f:
+                raw = yaml.safe_load(f) or {}
+        else:
+            raise FileNotFoundError("No config.yaml found, and no API payload provided.")
 
     return Config(
         vault_path=Path(raw["vault"]["path"]),
         ignored_dirs=raw["vault"]["ignored_dirs"],
         notes_root_dir=raw["vault"]["notes_root_dir"],
+        
+        author_mirror_enabled=raw["author_mirror"]["enabled"],
         author_mirror_dir=raw["author_mirror"]["output_dir"],
         author_mirror_prefix=raw["author_mirror"]["prefix"],
         author_mirror_section_title=raw["author_mirror"]["section_title"],
@@ -62,14 +74,14 @@ def load_config(config_path: Path = CONFIG_PATH) -> Config:
         author_repeat_penalty=raw["author_mirror"]["model"]["repeat_penalty"],
         author_overwrite_existing=raw["author_mirror"]["overwrite_existing"],
         author_cache_db_path=Path(raw["author_mirror"]["cache"]["db_path"]),
+        
+        link_enabled=raw["auto_links"]["enabled"],
         link_model_name=raw["auto_links"]["embedding"]["model_name"],
         link_similarity_threshold=raw["auto_links"]["similarity_threshold"],
         max_links_per_note=raw["auto_links"]["max_links_per_note"],
         link_min_note_chars=raw["auto_links"]["min_note_chars"],
         link_section_title=raw["auto_links"]["section_title"],
-        link_cache_db_path=Path(raw["auto_links"]["cache"]["db_path"]),
-        link_allow_rewrite_related_section=raw["auto_links"][
-            "allow_rewrite_related_section"
-        ],
+        link_allow_rewrite_related_section=raw["auto_links"]["allow_rewrite_related_section"],
         link_insert_only_if_missing=raw["auto_links"]["insert_only_if_missing"],
+        link_cache_db_path=Path(raw["auto_links"]["cache"]["db_path"]),
     )

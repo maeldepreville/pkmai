@@ -206,8 +206,11 @@ def update_note_file(path: Path, new_text: str) -> bool:
 # =========================
 
 
-def main() -> None:
-    cfg = load_config()
+def main(override_config: dict | None = None) -> None:
+    cfg = load_config(override_dict=override_config)
+    if not cfg.link_enabled:
+        print("Auto-links are disabled in settings. Skipping.")
+        return
     setup_logging(prefix="auto_links")
 
     logging.info("Vault: %s", cfg.vault_path)

@@ -233,8 +233,11 @@ def render_markdown(source_title: str, data: dict[str, Any]) -> str:
 # =========================
 
 
-def main() -> None:
-    cfg = load_config()
+def main(override_config: dict | None = None) -> None:
+    cfg = load_config(override_dict=override_config)
+    if not cfg.author_mirror_enabled:
+        print("Author Mirror is disabled in settings. Skipping.")
+        return
     setup_logging(prefix="author_mirror")
 
     conn = init_author_db(cfg.author_cache_db_path)
