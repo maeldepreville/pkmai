@@ -49,7 +49,7 @@ If you want to modify the code or build from source, you will need **Python 3.10
 Clone the repository and install the backend as an editable package using `uv`:
 
 ```bash
-git clone [https://github.com/maeldepreville/pkmai.git](https://github.com/maeldepreville/pkmai.git)
+git clone https://github.com/maeldepreville/pkmai.git
 cd pkmai
 pip install uv
 uv sync
