@@ -1,3 +1,9 @@
+# vscode
+.vscode
+
+# Exclude macOS Finder (System Explorer) View States
+.DS_Store
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -17,3 +23,19 @@ logs/
 data/
 model/
 config.yaml
+
+
+# pkmai-bridge plugin
+
+# npm
+pkmai-bridge/node_modules
+
+# Don't include the compiled main.js file in the repo.
+# They should be uploaded to GitHub releases instead.
+pkmai-bridge/main.js
+
+# Exclude sourcemaps
+*.map
+
+# obsidian
+pkmai-bridge/data.json

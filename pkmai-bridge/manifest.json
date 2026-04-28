@@ -1,0 +1,9 @@
+{
+	"id": "pkmai-bridge",
+	"name": "PKM AI Bridge",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Triggers local Python AI orchestration for Personal Knowledge Management.",
+	"author": "Mael Depréville",
+	"isDesktopOnly": true
+}
