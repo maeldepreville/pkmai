@@ -3,6 +3,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
+from typing import Callable
 
 from pkmai.core.config import Config, load_config
 from pkmai.core.logger import setup_logging
@@ -12,6 +13,7 @@ from pkmai.core.utils import (
     sha256_text,
     strip_section,
     replace_or_append_section,
+    report_status
 )
 from pkmai.db.connection import init_embed_db
 from pkmai.db.embed_cache import (
@@ -206,18 +208,16 @@ def update_note_file(path: Path, new_text: str) -> bool:
 # =========================
 
 
-def main(override_config: dict | None = None) -> None:
+def main(override_config: dict | None = None, status_callback: Callable[[str], None] | None = None) -> None:
     cfg = load_config(override_dict=override_config)
-    if not cfg.link_enabled:
-        print("Auto-links are disabled in settings. Skipping.")
-        return
     setup_logging(prefix="auto_links")
-
-    logging.info("Vault: %s", cfg.vault_path)
-    logging.info("Model: %s", cfg.link_model_name)
+    if not cfg.link_enabled:
+        logging.info("Auto-links are disabled in settings. Skipping.")
+        return
 
     conn = init_embed_db(cfg.link_cache_db_path)
 
+    report_status("Scanning vault for notes...", status_callback)
     note_files = find_note_files(cfg)
     logging.info("Markdown files found: %d", len(note_files))
 
@@ -239,8 +239,10 @@ def main(override_config: dict | None = None) -> None:
         logging.warning("No valid notes found.")
         return
 
+    report_status("Loading embedder...", status_callback)
     embedder = LocalEmbedder(cfg.link_model_name)
 
+    report_status("Computing related notes...", status_callback)
     embeddings_by_path = get_or_compute_embeddings(conn, embedder, notes)
     related = compute_related_notes(
         notes=notes,
@@ -252,6 +254,7 @@ def main(override_config: dict | None = None) -> None:
 
     updated_count = 0
 
+    report_status("Generating links...", status_callback)
     for note in notes:
         rel_candidates = related.get(note.rel_path, [])
         related_paths = [rel_path for rel_path, _score in rel_candidates]
@@ -267,9 +270,15 @@ def main(override_config: dict | None = None) -> None:
                 logging.info("Updated: %s", note.rel_path)
 
         except Exception as e:
+            report_status("failed", status_callback)
             logging.exception("Failed to update note %s: %s", note.rel_path, e)
-
-    logging.info("Done. Notes updated: %d / %d", updated_count, len(notes))
+    
+    report_status("completed", status_callback)
+    logging.info(
+        "Done. Notes updated: %d / %d", 
+        updated_count, 
+        len(notes)
+    )
 
 
 if __name__ == "__main__":

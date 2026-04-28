@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from pkmai.core.config import Config, load_config
 from pkmai.core.logger import setup_logging
@@ -9,6 +9,7 @@ from pkmai.core.utils import (
     is_ignored,
     sha256_text,
     replace_or_append_section,
+    report_status
 )
 from pkmai.db.connection import init_author_db
 from pkmai.db.author_cache import (
@@ -17,6 +18,7 @@ from pkmai.db.author_cache import (
     upsert_author_cache,
 )
 from pkmai.llm.llama_cpp_provider import LlamaCppProvider
+from pkmai.llm.manager import get_or_download_model
 
 
 # =========================
@@ -233,21 +235,38 @@ def render_markdown(source_title: str, data: dict[str, Any]) -> str:
 # =========================
 
 
-def main(override_config: dict | None = None) -> None:
+def main(override_config: dict | None = None, status_callback: Callable[[str], None] | None = None) -> None:
     cfg = load_config(override_dict=override_config)
-    if not cfg.author_mirror_enabled:
-        print("Author Mirror is disabled in settings. Skipping.")
-        return
     setup_logging(prefix="author_mirror")
-
+    if not cfg.author_mirror_enabled:
+        logging.info("Author Mirror is disabled in settings. Skipping.")
+        return
+    
     conn = init_author_db(cfg.author_cache_db_path)
+    
+    if cfg.author_use_custom_path:
+        report_status("Loading custom local model...", status_callback)
+        model_path = Path(cfg.author_custom_path)
+        if not model_path.exists():
+            logging.error("Custom model path does not exist: %s", model_path)
+            return
+        logging.info("Using custom local model from: %s", model_path)
+    else:
+        logging.info("Ensuring recommended model %s is available...", cfg.author_filename)
+        report_status("Downloading AI model (this may take a few minutes)...", status_callback)
+        model_path = get_or_download_model(
+            repo_id=cfg.author_repo_id, 
+            filename=cfg.author_filename
+        )
 
+    report_status("Loading model into memory...", status_callback)
     llm_provider = LlamaCppProvider(
-        model_path=cfg.author_model_path,
+        model_path=model_path,
         n_ctx=cfg.author_n_ctx,
         n_threads=cfg.author_n_threads,
     )
 
+    report_status("Scanning vault for notes...", status_callback)
     files = get_note_files(cfg)
     logging.info("Notes source trouvées: %d", len(files))
 
@@ -260,6 +279,7 @@ def main(override_config: dict | None = None) -> None:
     skipped_unchanged = 0
     failed = 0
 
+    report_status("Generating Author Mirrors...", status_callback)
     for path in files:
         source_title = path.stem
         rel_path = path.relative_to(cfg.vault_path).as_posix()
@@ -331,8 +351,10 @@ def main(override_config: dict | None = None) -> None:
 
         except Exception as e:
             failed += 1
+            report_status("failed", status_callback)
             logging.exception("Erreur sur %s: %s", source_title, e)
 
+    report_status("completed", status_callback)
     logging.info(
         "Done | created=%d overwritten=%d skipped=%d skipped_unchanged=%d failed=%d",
         created,

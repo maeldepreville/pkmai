@@ -1,4 +1,6 @@
-from fastapi import FastAPI, BackgroundTasks  # BackgroundTasks to avoid freezing the UI
+import uuid
+
+from fastapi import FastAPI, BackgroundTasks, Path as FastApiPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -43,7 +45,10 @@ class AutoLinksConfig(BaseModel):
     cache: CacheConfig
 
 class ModelConfig(BaseModel):
-    path: str
+    use_custom_path: bool
+    custom_path: str
+    repo_id: str
+    filename: str
     n_ctx: int
     n_threads: int
     max_tokens: int
@@ -68,6 +73,19 @@ class PluginPayload(BaseModel):
     author_mirror: AuthorMirrorConfig
 
 
+ACTIVE_TASKS: dict[str, str] = {}
+
+def update_task_status(task_id: str, status: str):
+    """Callback function to update the global dictionary."""
+    ACTIVE_TASKS[task_id] = status
+
+
+@app.get("/api/v1/tasks/{task_id}")
+async def get_task_status(task_id: str = FastApiPath(...)):
+    status = ACTIVE_TASKS.get(task_id, "unknown")
+    return JSONResponse(content={"status": status})
+
+
 @app.get("/health")
 async def health_check():
     return JSONResponse(
@@ -78,9 +96,16 @@ async def health_check():
 @app.post("/api/v1/mirror/sync")
 async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks):
     """Triggers the Author Mirror vault sync in the background."""
-    background_tasks.add_task(author_mirror_notes.main, override_config=payload.model_dump())
+    task_id = str(uuid.uuid4())
+    ACTIVE_TASKS[task_id] = "Initializing..."
+    background_tasks.add_task(
+        author_mirror_notes.main, 
+        override_config=payload.model_dump(),
+        status_callback=lambda msg: update_task_status(task_id, msg)
+    )
     return JSONResponse(
         content={
+            "task_id": task_id,
             "status": "accepted",
             "message": "Author Mirror sync started in the background.",
         }
@@ -90,9 +115,16 @@ async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks
 @app.post("/api/v1/links/sync")
 async def sync_links(payload: PluginPayload, background_tasks: BackgroundTasks):
     """Triggers the Auto-Links vault sync in the background."""
-    background_tasks.add_task(auto_links.main, override_config=payload.model_dump())
+    task_id = str(uuid.uuid4())
+    ACTIVE_TASKS[task_id] = "Initializing..."
+    background_tasks.add_task(
+        auto_links.main, 
+        override_config=payload.model_dump(),
+        status_callback=lambda msg: update_task_status(task_id, msg)
+    )
     return JSONResponse(
         content={
+            "task_id": task_id,
             "status": "accepted",
             "message": "Auto-Links sync started in the background.",
         }

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
+from typing import Callable
+import logging
 
 
 # =========================
@@ -81,3 +83,9 @@ def clean_note_text(raw: str, author_title: str, link_title: str) -> str:
     text = re.sub(r"(?m)^\s*#+\s*", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def report_status(msg: str, status_callback: Callable[[str], None] | None):
+    logging.info("%s", msg)
+    if status_callback:
+        status_callback(msg)

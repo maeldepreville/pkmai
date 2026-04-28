@@ -23,7 +23,10 @@ class Config:
     author_mirror_section_title: str
     author_min_chars: int
     author_max_note_chars: int
-    author_model_path: Path
+    author_use_custom_path: bool
+    author_custom_path: Path
+    author_repo_id: str
+    author_filename: str
     author_n_ctx: int
     author_n_threads: int
     author_max_tokens: int
@@ -66,7 +69,10 @@ def load_config(config_path: Path = CONFIG_PATH, override_dict: dict | None = No
         author_mirror_section_title=raw["author_mirror"]["section_title"],
         author_min_chars=raw["author_mirror"]["min_chars"],
         author_max_note_chars=raw["author_mirror"]["max_note_chars"],
-        author_model_path=Path(raw["author_mirror"]["model"]["path"]),
+        author_use_custom_path=raw["author_mirror"]["model"]["use_custom_path"],
+        author_custom_path=Path(raw["author_mirror"]["model"]["custom_path"]),
+        author_repo_id=raw["author_mirror"]["model"]["repo_id"],
+        author_filename=raw["author_mirror"]["model"]["filename"],
         author_n_ctx=raw["author_mirror"]["model"]["n_ctx"],
         author_n_threads=raw["author_mirror"]["model"]["n_threads"],
         author_max_tokens=raw["author_mirror"]["model"]["max_tokens"],
