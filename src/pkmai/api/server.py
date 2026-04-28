@@ -22,16 +22,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class VaultConfig(BaseModel):
     path: str
     notes_root_dir: str
     ignored_dirs: list[str]
 
+
 class EmbeddingConfig(BaseModel):
     model_name: str
-    
+
+
 class CacheConfig(BaseModel):
     db_path: str
+
 
 class AutoLinksConfig(BaseModel):
     enabled: bool
@@ -44,6 +48,7 @@ class AutoLinksConfig(BaseModel):
     embedding: EmbeddingConfig
     cache: CacheConfig
 
+
 class ModelConfig(BaseModel):
     use_custom_path: bool
     custom_path: str
@@ -54,6 +59,7 @@ class ModelConfig(BaseModel):
     max_tokens: int
     temperature: float
     repeat_penalty: float
+
 
 class AuthorMirrorConfig(BaseModel):
     enabled: bool
@@ -66,6 +72,7 @@ class AuthorMirrorConfig(BaseModel):
     model: ModelConfig
     cache: CacheConfig
 
+
 # The Master Payload encompassing everything
 class PluginPayload(BaseModel):
     vault: VaultConfig
@@ -74,6 +81,7 @@ class PluginPayload(BaseModel):
 
 
 ACTIVE_TASKS: dict[str, str] = {}
+
 
 def update_task_status(task_id: str, status: str):
     """Callback function to update the global dictionary."""
@@ -99,9 +107,9 @@ async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks
     task_id = str(uuid.uuid4())
     ACTIVE_TASKS[task_id] = "Initializing..."
     background_tasks.add_task(
-        author_mirror_notes.main, 
+        author_mirror_notes.main,
         override_config=payload.model_dump(),
-        status_callback=lambda msg: update_task_status(task_id, msg)
+        status_callback=lambda msg: update_task_status(task_id, msg),
     )
     return JSONResponse(
         content={
@@ -118,9 +126,9 @@ async def sync_links(payload: PluginPayload, background_tasks: BackgroundTasks):
     task_id = str(uuid.uuid4())
     ACTIVE_TASKS[task_id] = "Initializing..."
     background_tasks.add_task(
-        auto_links.main, 
+        auto_links.main,
         override_config=payload.model_dump(),
-        status_callback=lambda msg: update_task_status(task_id, msg)
+        status_callback=lambda msg: update_task_status(task_id, msg),
     )
     return JSONResponse(
         content={

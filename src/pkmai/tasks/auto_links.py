@@ -13,7 +13,7 @@ from pkmai.core.utils import (
     sha256_text,
     strip_section,
     replace_or_append_section,
-    report_status
+    report_status,
 )
 from pkmai.db.connection import init_embed_db
 from pkmai.db.embed_cache import (
@@ -208,7 +208,10 @@ def update_note_file(path: Path, new_text: str) -> bool:
 # =========================
 
 
-def main(override_config: dict | None = None, status_callback: Callable[[str], None] | None = None) -> None:
+def main(
+    override_config: dict | None = None,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
     cfg = load_config(override_dict=override_config)
     setup_logging(prefix="auto_links")
     if not cfg.link_enabled:
@@ -272,13 +275,9 @@ def main(override_config: dict | None = None, status_callback: Callable[[str], N
         except Exception as e:
             report_status("failed", status_callback)
             logging.exception("Failed to update note %s: %s", note.rel_path, e)
-    
+
     report_status("completed", status_callback)
-    logging.info(
-        "Done. Notes updated: %d / %d", 
-        updated_count, 
-        len(notes)
-    )
+    logging.info("Done. Notes updated: %d / %d", updated_count, len(notes))
 
 
 if __name__ == "__main__":

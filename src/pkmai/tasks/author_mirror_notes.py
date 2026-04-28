@@ -9,7 +9,7 @@ from pkmai.core.utils import (
     is_ignored,
     sha256_text,
     replace_or_append_section,
-    report_status
+    report_status,
 )
 from pkmai.db.connection import init_author_db
 from pkmai.db.author_cache import (
@@ -235,15 +235,18 @@ def render_markdown(source_title: str, data: dict[str, Any]) -> str:
 # =========================
 
 
-def main(override_config: dict | None = None, status_callback: Callable[[str], None] | None = None) -> None:
+def main(
+    override_config: dict | None = None,
+    status_callback: Callable[[str], None] | None = None,
+) -> None:
     cfg = load_config(override_dict=override_config)
     setup_logging(prefix="author_mirror")
     if not cfg.author_mirror_enabled:
         logging.info("Author Mirror is disabled in settings. Skipping.")
         return
-    
+
     conn = init_author_db(cfg.author_cache_db_path)
-    
+
     if cfg.author_use_custom_path:
         report_status("Loading custom local model...", status_callback)
         model_path = Path(cfg.author_custom_path)
@@ -252,11 +255,14 @@ def main(override_config: dict | None = None, status_callback: Callable[[str], N
             return
         logging.info("Using custom local model from: %s", model_path)
     else:
-        logging.info("Ensuring recommended model %s is available...", cfg.author_filename)
-        report_status("Downloading AI model (this may take a few minutes)...", status_callback)
+        logging.info(
+            "Ensuring recommended model %s is available...", cfg.author_filename
+        )
+        report_status(
+            "Downloading AI model (this may take a few minutes)...", status_callback
+        )
         model_path = get_or_download_model(
-            repo_id=cfg.author_repo_id, 
-            filename=cfg.author_filename
+            repo_id=cfg.author_repo_id, filename=cfg.author_filename
         )
 
     report_status("Loading model into memory...", status_callback)
