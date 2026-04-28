@@ -45,7 +45,7 @@ jobs:
         run: pip install uv
 
       - name: Install Python Dependencies
-        run: uv sync
+        run: uv sync --link-mode=copy
 
       - name: Compile Python Backend (PyInstaller)
         run: |
@@ -55,14 +55,9 @@ jobs:
       - name: Prepare Final Release Folder
         shell: bash
         run: |
-          # Create a clean folder structure
           mkdir -p release_package/pkmai-bridge/bin
-          
-          # Copy the compiled Obsidian frontend
           cp pkmai-bridge/main.js release_package/pkmai-bridge/
           cp pkmai-bridge/manifest.json release_package/pkmai-bridge/
-          
-          # Copy the massive compiled Python backend into the 'bin' folder
           cp -r dist/pkmai-server/* release_package/pkmai-bridge/bin/
 
       - name: Zip the final package
