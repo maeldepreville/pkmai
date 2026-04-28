@@ -1,0 +1,81 @@
+name: Build and Release PKM AI
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        # Run on both Windows and Mac simultaneously
+        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            artifact_name: pkmai-windows
+          - os: macos-latest
+            artifact_name: pkmai-macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- BUILD THE FRONTEND ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Obsidian Plugin
+        working-directory: ./pkmai-bridge
+        run: |
+          npm install
+          npm run build
+
+      # --- BUILD THE BACKEND ---
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        run: pip install uv
+
+      - name: Install Python Dependencies
+        run: uv sync
+
+      - name: Compile Python Backend (PyInstaller)
+        run: |
+          uv run pyinstaller --name pkmai-server --onedir run_server.py --collect-all llama_cpp --collect-all sentence_transformers --hidden-import uvicorn.logging --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan.on --hidden-import uvicorn.lifespan.off
+
+      # --- PACKAGE EVERYTHING TOGETHER ---
+      - name: Prepare Final Release Folder
+        shell: bash
+        run: |
+          # Create a clean folder structure
+          mkdir -p release_package/pkmai-bridge/bin
+          
+          # Copy the compiled Obsidian frontend
+          cp pkmai-bridge/main.js release_package/pkmai-bridge/
+          cp pkmai-bridge/manifest.json release_package/pkmai-bridge/
+          
+          # Copy the massive compiled Python backend into the 'bin' folder
+          cp -r dist/pkmai-server/* release_package/pkmai-bridge/bin/
+
+      - name: Zip the final package
+        uses: thedoctor0/zip-release@0.7.6
+        with:
+          type: 'zip'
+          filename: '${{ matrix.artifact_name }}.zip'
+          directory: 'release_package'
+
+      # --- PUBLISH TO GITHUB RELEASES ---
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_package/${{ matrix.artifact_name }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

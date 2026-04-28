@@ -26,16 +26,12 @@ config.yaml
 
 
 # pkmai-bridge plugin
-
-# npm
 pkmai-bridge/node_modules
-
-# Don't include the compiled main.js file in the repo.
-# They should be uploaded to GitHub releases instead.
 pkmai-bridge/main.js
-
-# Exclude sourcemaps
+pkmai-bridge/data.json
 *.map
 
-# obsidian
-pkmai-bridge/data.json
+# PyInstaller Build Artifacts
+build/
+dist/
+*.spec
