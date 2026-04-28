@@ -36,6 +36,7 @@ export default class PkmAiPlugin extends Plugin {
 
 		const statusBarItem = this.addStatusBarItem();
 		statusBarItem.setText(`⏳ ${taskName}: Initializing...`);
+		statusBarItem.addClass('pkmai-status-processing');
 
 		try {
 			const payload = JSON.parse(JSON.stringify(this.settings));
@@ -67,6 +68,8 @@ export default class PkmAiPlugin extends Plugin {
 
 				if (status === 'completed') {
 					statusBar.setText(`✅ ${taskName}: Complete!`);
+					statusBar.removeClass('pkmai-status-processing');
+                    statusBar.addClass('pkmai-status-success');
 					clearInterval(interval);
 					new Notice(`${taskName} finished successfully!`);
 					
@@ -74,6 +77,8 @@ export default class PkmAiPlugin extends Plugin {
 					
 				} else if (status === 'failed') {
 					statusBar.setText(`❌ ${taskName}: Error occurred`);
+					statusBar.removeClass('pkmai-status-processing');
+                    statusBar.addClass('pkmai-status-error');
 					clearInterval(interval);
 					new Notice(`Error running ${taskName}. Check the Python terminal.`);
 					setTimeout(() => statusBar.remove(), 5000);

@@ -96,9 +96,18 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		containerEl.addClass('pkmai-settings-container');
+		const header = containerEl.createDiv({ cls: 'pkmai-settings-header' });
+        header.createEl('h1', { text: 'PKM AI' });
+        header.createEl('p', { 
+            text: 'Local, private AI orchestration for your vault.', 
+            cls: 'pkmai-settings-subtitle' 
+        });
+
 		containerEl.createEl('h2', { text: '📁 Vault Settings' });
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Absolute Vault Path')
 			.setDesc('Local path to your Obsidian vault.')
 			.addText(text => text
@@ -109,6 +118,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Notes Root Directory')
 			.setDesc('Notes directory name in your Obsidian vault.')
 			.addText(text => text
@@ -119,6 +129,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Ignored Directories')
 			.setDesc('Comma-separated list of folders to skip.')
 			.addText(text => text
@@ -132,6 +143,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: '🕸️ Auto-Links Configuration' });
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Enable Auto-Links')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.auto_links.enabled)
@@ -141,6 +153,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Similarity Threshold')
 			.setDesc('Higher means stricter matching (0.0 to 1.0).')
 			.addSlider(slider => slider
@@ -153,6 +166,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Max Links Per Note')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.auto_links.max_links_per_note))
@@ -165,6 +179,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Min Characters Per Note')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.auto_links.min_note_chars))
@@ -177,6 +192,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Section Title')
 			.setDesc('Section Title for Related Notes.')
 			.addText(text => text
@@ -187,6 +203,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 		
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Allow Rewritting Related Sections')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.auto_links.allow_rewrite_related_section)
@@ -196,6 +213,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Insert only if Section is Missing')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.auto_links.insert_only_if_missing)
@@ -205,6 +223,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Model Name')
 			.setDesc('Model Name for embeddings (Hugging Face).')
 			.addText(text => text
@@ -215,6 +234,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Cache DB Path')
 			.setDesc('Embeddings cache db path.')
 			.addText(text => text
@@ -228,6 +248,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		containerEl.createEl('h2', { text: '🧠 Author Mirror Configuration' });
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Enable Author Mirror')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.author_mirror.enabled)
@@ -237,6 +258,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Use Custom Local Model')
 			.setDesc('Turn on to provide a path to your own .gguf file. Leave off to automatically use the built-in lightweight Qwen AI.')
 			.addToggle(toggle => toggle
@@ -265,6 +287,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		}
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Output Directory')
 			.setDesc('Directory name to store the generated notes.')
 			.addText(text => text
@@ -275,6 +298,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Title Prefix')
 			.setDesc('Generated notes title prefix.')
 			.addText(text => text
@@ -285,6 +309,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Minimum Notes Characters')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.author_mirror.min_chars))
@@ -297,6 +322,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Maximum Generated Note Characters')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.author_mirror.max_note_chars))
@@ -309,6 +335,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Enable Overwritting Existing Notes')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.author_mirror.overwrite_existing)
@@ -318,6 +345,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Section Title')
 			.setDesc('Section Title for Generated Notes.')
 			.addText(text => text
@@ -328,6 +356,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Maximum Context Size')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.author_mirror.model.n_ctx))
@@ -340,6 +369,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Number of CPU Threads')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.author_mirror.model.n_threads))
@@ -352,6 +382,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Maximum Number of Generated Tokens')
 			.addText(text => text
 				.setValue(String(this.plugin.settings.author_mirror.model.max_tokens))
@@ -364,6 +395,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Model Temperature')
 			.setDesc('Creativity of the generated text (0.0 to 1.0).')
 			.addSlider(slider => slider
@@ -376,6 +408,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Model Repetition Penalty')
 			.setDesc('Repetition penalty of the generated text (1.0 allowing tokens to repeat freely to 1.5 for strong repetition avoidance).')
 			.addSlider(slider => slider
@@ -388,6 +421,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				}));
 	
 		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
 			.setName('Cache DB Path')
 			.setDesc('Notes cache db path.')
 			.addText(text => text
