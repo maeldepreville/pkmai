@@ -2,7 +2,8 @@
 
 Local, private AI orchestration for Personal Knowledge Management (PKM). 
 
-This project bridges a local Python backend with an Obsidian frontend, allowing you to enrich your markdown vault using local Large Language Models (LLMs) and vector embeddings ; entirely offline and without subscription APIs.
+This project bridges a local Python backend with an Obsidian frontend, allowing you to enrich your markdown vault using local Large Language Models (LLMs) and vector embeddings; entirely offline and without subscription APIs.
+
 
 ## Features
 
@@ -13,6 +14,7 @@ This project bridges a local Python backend with an Obsidian frontend, allowing 
 - **Obsidian Native Configuration:** Say goodbye to editing YAML files. The plugin features a comprehensive native settings menu inside Obsidian to control model paths, similarity thresholds, and ignored directories.
 - **Live Status Polling:** Features a dynamic UI progress tracker in the Obsidian status bar so you always know what the background engine is processing.
 - **Smart Caching:** Uses SQLite to cache document hashes and high-dimensional vectors, ensuring that AI models only process notes that have actually been modified.
+
 
 ## Architecture
 
@@ -30,6 +32,7 @@ graph LR
     E --> G
 ```
 
+
 ## Installation (For Users)
 
 **No programming experience required. The app comes pre-packaged.**
@@ -39,6 +42,7 @@ graph LR
 - Extract the downloaded file. You will get a folder named `pkmai-bridge`.
 - Move the `pkmai-bridge` folder into your vault's hidden plugins directory: `/path/to/your/vault/.obsidian/plugins/`
 - Restart Obsidian, go to **Settings > Community Plugins**, and turn on **PKM AI Bridge**.
+
 
 ## Installation (For Developers)
 
@@ -65,6 +69,7 @@ npm install
 npm run build
 ```
 
+
 ## Usage
 
 ### Inside Obsidian (Automated)
@@ -85,6 +90,7 @@ pkmai links         # Run the Auto-Links pipeline manually
 pkmai mirror        # Run the Author Mirror pipeline manually
 pkmai mirror -f     # Force regenerate mirrors, bypassing the cache
 ```
+
 
 ## Technical Stack
 
