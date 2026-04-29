@@ -1,13 +1,39 @@
 import { Plugin, Notice, requestUrl } from 'obsidian';
-import { spawn, ChildProcess } from 'child_process';
 import { PkmAiSettings, DEFAULT_SETTINGS, PkmAiSettingTab } from './settings';
+import { spawn, ChildProcess } from 'child_process';
+import * as path from 'path';
 
 
 export default class PkmAiPlugin extends Plugin {
 	settings: PkmAiSettings;
+	private serverProcess: ChildProcess | null = null;
 
 	async onload() {
 		await this.loadSettings();
+
+		try {
+            const basePath = (this.app.vault.adapter as any).getBasePath();
+			if (!this.manifest.dir) {
+                throw new Error("Plugin directory is undefined.");
+            }
+            const pluginDir = path.join(basePath, this.manifest.dir);
+            
+            const isWindows = process.platform === 'win32';
+            const exeName = isWindows ? 'pkmai-server.exe' : 'pkmai-server';
+            const exePath = path.join(pluginDir, 'bin', exeName);
+
+            console.log(`[PKM AI] Booting local server from: ${exePath}`);
+            this.serverProcess = spawn(exePath, [], {
+                cwd: pluginDir,       // Run it from the plugin directory
+                detached: false,      // Keep it attached so it dies if Obsidian crashes
+                stdio: 'ignore'       // Ignore server terminal logs to save memory
+            });
+
+            new Notice('PKM AI background engine started.');
+        } catch (error) {
+            console.error('[PKM AI] Failed to start background server:', error);
+            new Notice('Failed to start the local AI server. Check console.');
+        }
 		
 		this.addSettingTab(new PkmAiSettingTab(this.app, this));
 
@@ -92,5 +118,13 @@ export default class PkmAiPlugin extends Plugin {
 				setTimeout(() => statusBar.remove(), 5000);
 			}
 		}, 1000);
+	}
+
+	async onunload() {
+        if (this.serverProcess) {
+            console.log('[PKM AI] Shutting down background server...');
+            this.serverProcess.kill();
+            this.serverProcess = null;
+        }
 	}
 }
