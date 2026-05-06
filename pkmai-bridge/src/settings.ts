@@ -1,6 +1,20 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
 import PkmAiPlugin from './main';
+import * as path from 'path';
+import * as fs from 'fs';
 
+
+declare global {
+    interface Window {
+        electron?: {
+            remote?: {
+                shell?: {
+                    openPath: (path: string) => Promise<string>;
+                };
+            };
+        };
+    }
+}
 
 export interface PkmAiSettings {
 	vault: {
@@ -45,7 +59,7 @@ export interface PkmAiSettings {
 
 export const DEFAULT_SETTINGS: PkmAiSettings = {
 	vault: {
-		path: '',
+		path: 'path/to/your/vault',
 		notes_root_dir: 'YourNotesDirName',
 		ignored_dirs: '.obsidian,Templates,Archive,logs,data,Auteurs Miroirs'
 	},
@@ -115,7 +129,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.vault.path = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -126,7 +141,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.vault.notes_root_dir = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -137,7 +153,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.vault.ignored_dirs = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 
 		containerEl.createEl('h2', { text: '🕸️ Auto-Links Configuration' });
@@ -150,7 +167,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.enabled = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -163,7 +181,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.similarity_threshold = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -176,7 +195,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.auto_links.max_links_per_note = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -189,7 +209,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.auto_links.min_note_chars = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -200,7 +221,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.section_title = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 		
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -210,7 +232,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.allow_rewrite_related_section = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -220,7 +243,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.insert_only_if_missing = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -231,7 +255,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.embedding.model_name = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -242,7 +267,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.auto_links.cache.db_path = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 
 		containerEl.createEl('h2', { text: '🧠 Author Mirror Configuration' });
@@ -255,7 +281,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.enabled = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -267,7 +294,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					this.plugin.settings.author_mirror.model.use_custom_path = value;
 					await this.plugin.saveSettings();
 					this.display();
-				}));
+				})
+			);
 
 		if (this.plugin.settings.author_mirror.model.use_custom_path) {
 			new Setting(containerEl)
@@ -279,7 +307,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					.onChange(async (value) => {
 						this.plugin.settings.author_mirror.model.custom_path = value;
 						await this.plugin.saveSettings();
-					}));
+					})
+				);
 		} else {
 			new Setting(containerEl)
 				.setName('Built-in Model Active')
@@ -295,7 +324,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.output_dir = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -306,7 +336,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.prefix = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -319,7 +350,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.author_mirror.min_chars = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -332,7 +364,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.author_mirror.max_note_chars = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -342,7 +375,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.overwrite_existing = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -353,7 +387,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.section_title = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -366,7 +401,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.author_mirror.model.n_ctx = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -379,7 +415,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.author_mirror.model.n_threads = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -392,7 +429,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 						this.plugin.settings.author_mirror.model.max_tokens = num;
 						await this.plugin.saveSettings();
 					}
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -405,7 +443,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.model.temperature = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -418,7 +457,8 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.model.repeat_penalty = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
 	
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -429,6 +469,41 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.author_mirror.cache.db_path = value;
 					await this.plugin.saveSettings();
-				}));
+				})
+			);
+		
+		containerEl.createEl('h2', { text: '📰 Debug Logs' });
+		
+		new Setting(containerEl)
+			.setName('Check Debug Logs')
+			.setDesc('Open the folder containing PKM AI backend logs.')
+			.addButton((button) =>
+				button
+					.setButtonText('Open logs folder')
+					.onClick(async () => {
+						const logsDir = path.join(
+							this.plugin.settings.vault.path,
+							this.plugin.settings.vault.notes_root_dir,
+							'.obsidian',
+							'plugins',
+							this.plugin.manifest.id,
+							'logs'
+						);
+						fs.mkdirSync(logsDir, { recursive: true });
+
+						const shell = window.electron?.remote?.shell;
+						if (!shell) {
+							new Notice('Opening logs folder is only available in Obsidian desktop.');
+							return;
+						}
+
+						const errorMessage = await shell.openPath(logsDir);
+
+						if (errorMessage) {
+							new Notice(`Could not open logs folder: ${errorMessage}`);
+							return;
+						}
+					})
+			);
 	}
 }
