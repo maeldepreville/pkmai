@@ -52,6 +52,7 @@ jobs:
         run: |
           uv run pyinstaller \
             --name pkmai-server \
+            --noconsole \
             --onedir run_server.py \
             --collect-all pkmai \
             --collect-all llama_cpp \

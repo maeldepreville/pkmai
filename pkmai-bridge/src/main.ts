@@ -34,6 +34,7 @@ export default class PkmAiPlugin extends Plugin {
 			this.serverProcess = spawn(exePath, [], {
 				cwd: pluginDir,
 				detached: false,
+				windowsHide: true,
 				stdio: ['ignore', outLog, errLog],
 				env: {
 					...process.env,
