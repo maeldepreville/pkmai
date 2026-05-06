@@ -86,8 +86,9 @@ export default class PkmAiPlugin extends Plugin {
         }
 
 		const statusBarItem = this.addStatusBarItem();
-		statusBarItem.setText(`⏳ ${taskName}: Initializing...`);
+		statusBarItem.addClass('pkmai-status-bar-item');
 		statusBarItem.addClass('pkmai-status-processing');
+		statusBarItem.setText(`⏳ ${taskName}: Initializing...`);
 
 		try {
 			const payload = JSON.parse(JSON.stringify(this.settings));
@@ -126,7 +127,7 @@ export default class PkmAiPlugin extends Plugin {
 					
 					setTimeout(() => statusBar.remove(), 5000);
 					
-				} else if (status === 'failed') {
+				} else if (typeof status === 'string' && status.startsWith('failed')) {
 					statusBar.setText(`❌ ${taskName}: Error occurred`);
 					statusBar.removeClass('pkmai-status-processing');
                     statusBar.addClass('pkmai-status-error');

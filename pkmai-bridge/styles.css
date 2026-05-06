@@ -1,25 +1,27 @@
 /* --- The Status Bar --- */
-.pkmai-status-processing {
-    color: var(--text-accent); 
-    font-weight: 600;
-    animation: pkmai-pulse 2s infinite ease-in-out;
-}
-
 @keyframes pkmai-pulse {
     0% { opacity: 0.6; text-shadow: 0 0 0px transparent; }
     50% { opacity: 1; text-shadow: 0 0 8px var(--text-accent); }
     100% { opacity: 0.6; text-shadow: 0 0 0px transparent; }
 }
 
-.pkmai-status-success {
-    color: var(--text-success);
-    font-weight: bold;
-    transition: all 0.3s ease;
+.status-bar-item.pkmai-status-processing,
+.status-bar-item.pkmai-status-processing * {
+    color: var(--text-accent) !important;
+    font-weight: 600;
+    animation: pkmai-pulse 2s infinite ease-in-out;
 }
 
-.pkmai-status-error {
-    color: var(--text-error);
-    font-weight: bold;
+.status-bar-item.pkmai-status-success,
+.status-bar-item.pkmai-status-success * {
+    color: var(--text-success) !important;
+    font-weight: 700;
+}
+
+.status-bar-item.pkmai-status-error,
+.status-bar-item.pkmai-status-error * {
+    color: var(--text-error) !important;
+    font-weight: 700;
 }
 
 
