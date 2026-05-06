@@ -133,7 +133,7 @@ async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks
     """Triggers the Author Mirror vault sync in the background."""
     task_id = str(uuid.uuid4())
     ACTIVE_TASKS[task_id] = "Initializing..."
-    
+
     background_tasks.add_task(
         run_tracked_task,
         task_id=task_id,
@@ -141,7 +141,7 @@ async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks
         func=author_mirror_notes.main,
         override_config=payload.model_dump(),
     )
-    
+
     return JSONResponse(
         content={
             "task_id": task_id,
