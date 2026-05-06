@@ -93,14 +93,14 @@ def update_task_status(task_id: str, status: str):
 def run_tracked_task(
     task_id: str,
     task_name: str,
-    func: Callable,
+    task_callable: Callable,
     override_config: dict,
 ) -> None:
     try:
         logging.info("Starting task %s: %s", task_id, task_name)
         update_task_status(task_id, "running")
 
-        func(
+        task_callable(
             override_config=override_config,
             status_callback=lambda msg: update_task_status(task_id, msg),
         )
@@ -138,7 +138,7 @@ async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks
         run_tracked_task,
         task_id=task_id,
         task_name="author_mirror",
-        func=author_mirror_notes.main,
+        task_callable=author_mirror_notes.main,
         override_config=payload.model_dump(),
     )
 
@@ -161,7 +161,7 @@ async def sync_links(payload: PluginPayload, background_tasks: BackgroundTasks):
         run_tracked_task,
         task_id=task_id,
         task_name="auto_links",
-        func=auto_links.main,
+        task_callable=auto_links.main,
         override_config=payload.model_dump(),
     )
 
