@@ -77,6 +77,7 @@ jobs:
           mkdir -p release_package/pkmai-bridge/bin
           cp pkmai-bridge/main.js release_package/pkmai-bridge/
           cp pkmai-bridge/manifest.json release_package/pkmai-bridge/
+          cp pkmai-bridge/styles.css release_package/pkmai-bridge/
           cp -r dist/pkmai-server/* release_package/pkmai-bridge/bin/
 
       - name: Zip the final package
