@@ -2,6 +2,7 @@ import { Plugin, Notice, requestUrl } from 'obsidian';
 import { PkmAiSettings, DEFAULT_SETTINGS, PkmAiSettingTab } from './settings';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as fs from 'fs';
 
 
 export default class PkmAiPlugin extends Plugin {
@@ -23,11 +24,34 @@ export default class PkmAiPlugin extends Plugin {
             const exePath = path.join(pluginDir, 'bin', exeName);
 
             console.log(`[PKM AI] Booting local server from: ${exePath}`);
-            this.serverProcess = spawn(exePath, [], {
-                cwd: pluginDir,       // Run it from the plugin directory
-                detached: false,      // Keep it attached so it dies if Obsidian crashes
-                stdio: 'ignore'       // Ignore server terminal logs to save memory
-            });
+			
+			const logsDir = path.join(pluginDir, 'logs');
+			fs.mkdirSync(logsDir, { recursive: true });
+
+			const outLog = fs.openSync(path.join(logsDir, 'pkmai-server.out.log'), 'a');
+			const errLog = fs.openSync(path.join(logsDir, 'pkmai-server.err.log'), 'a');
+
+			this.serverProcess = spawn(exePath, [], {
+				cwd: pluginDir,
+				detached: false,
+				stdio: ['ignore', outLog, errLog],
+				env: {
+					...process.env,
+					TOKENIZERS_PARALLELISM: 'false',
+					OMP_NUM_THREADS: '1',
+					MKL_NUM_THREADS: '1',
+					NUMEXPR_NUM_THREADS: '1',
+				},
+			});
+
+			this.serverProcess.on('error', (error) => {
+				console.error('[PKM AI] Server process error:', error);
+				new Notice(`PKM AI server failed: ${error.message}`);
+			});
+
+			this.serverProcess.on('exit', (code, signal) => {
+				console.log(`[PKM AI] Server exited. code=${code}, signal=${signal}`);
+			});
 
             new Notice('PKM AI background engine started.');
         } catch (error) {

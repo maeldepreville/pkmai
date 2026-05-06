@@ -1,4 +1,6 @@
 import uuid
+import logging
+from typing import Callable
 
 from fastapi import FastAPI, BackgroundTasks, Path as FastApiPath
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,6 +90,31 @@ def update_task_status(task_id: str, status: str):
     ACTIVE_TASKS[task_id] = status
 
 
+def run_tracked_task(
+    task_id: str,
+    task_name: str,
+    func: Callable,
+    override_config: dict,
+) -> None:
+    try:
+        logging.info("Starting task %s: %s", task_id, task_name)
+        update_task_status(task_id, "running")
+
+        func(
+            override_config=override_config,
+            status_callback=lambda msg: update_task_status(task_id, msg),
+        )
+
+        if ACTIVE_TASKS.get(task_id) not in {"completed", "failed"}:
+            update_task_status(task_id, "completed")
+
+        logging.info("Task %s completed: %s", task_id, task_name)
+
+    except Exception as exc:
+        logging.exception("Task %s failed: %s", task_id, task_name)
+        update_task_status(task_id, f"failed: {type(exc).__name__}: {exc}")
+
+
 @app.get("/api/v1/tasks/{task_id}")
 async def get_task_status(task_id: str = FastApiPath(...)):
     status = ACTIVE_TASKS.get(task_id, "unknown")
@@ -106,11 +133,15 @@ async def sync_mirrors(payload: PluginPayload, background_tasks: BackgroundTasks
     """Triggers the Author Mirror vault sync in the background."""
     task_id = str(uuid.uuid4())
     ACTIVE_TASKS[task_id] = "Initializing..."
+    
     background_tasks.add_task(
-        author_mirror_notes.main,
+        run_tracked_task,
+        task_id=task_id,
+        task_name="author_mirror",
+        func=author_mirror_notes.main,
         override_config=payload.model_dump(),
-        status_callback=lambda msg: update_task_status(task_id, msg),
     )
+    
     return JSONResponse(
         content={
             "task_id": task_id,
@@ -125,11 +156,15 @@ async def sync_links(payload: PluginPayload, background_tasks: BackgroundTasks):
     """Triggers the Auto-Links vault sync in the background."""
     task_id = str(uuid.uuid4())
     ACTIVE_TASKS[task_id] = "Initializing..."
+
     background_tasks.add_task(
-        auto_links.main,
+        run_tracked_task,
+        task_id=task_id,
+        task_name="auto_links",
+        func=auto_links.main,
         override_config=payload.model_dump(),
-        status_callback=lambda msg: update_task_status(task_id, msg),
     )
+
     return JSONResponse(
         content={
             "task_id": task_id,

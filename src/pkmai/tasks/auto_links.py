@@ -98,7 +98,10 @@ def load_note_record(path: Path, vault_path: Path, cfg: Config) -> NoteRecord | 
 
 
 def get_or_compute_embeddings(
-    conn, embedder: LocalEmbedder, notes: list[NoteRecord]
+    conn,
+    embedder: LocalEmbedder,
+    notes: list[NoteRecord],
+    status_callback: Callable[[str], None] | None = None,
 ) -> dict[str, np.ndarray]:
     result: dict[str, np.ndarray] = {}
     to_compute: list[NoteRecord] = []
@@ -119,9 +122,16 @@ def get_or_compute_embeddings(
     logging.info("Embeddings to compute: %d", len(to_compute))
 
     if to_compute:
+        logging.info("pbm 1")
         texts = [n.clean_text for n in to_compute]
-        new_embeddings = embedder.encode_texts(texts)
+        new_embeddings = embedder.encode_texts(
+            texts,
+            batch_size=2,
+            max_chars=8_000,
+            status_callback=status_callback,
+        )
 
+        logging.info("pbm 2")
         for note, emb in zip(to_compute, new_embeddings):
             save_cached_embedding(
                 conn=conn,
@@ -142,11 +152,13 @@ def compute_related_notes(
     similarity_threshold: float,
     max_links_per_note: int,
 ) -> dict[str, list[tuple[str, float]]]:
+    logging.info("pbm 3")
     ordered_embeddings = np.stack(
         [embeddings_by_path[n.rel_path] for n in notes], axis=0
     )
     sim = LocalEmbedder.cosine_sim_matrix(ordered_embeddings)
 
+    logging.info("pbm 4")
     related: dict[str, list[tuple[str, float]]] = {}
 
     for i, note in enumerate(notes):
@@ -246,7 +258,12 @@ def main(
     embedder = LocalEmbedder(cfg.link_model_name)
 
     report_status("Computing related notes...", status_callback)
-    embeddings_by_path = get_or_compute_embeddings(conn, embedder, notes)
+    embeddings_by_path = get_or_compute_embeddings(
+        conn,
+        embedder,
+        notes,
+        status_callback=status_callback,
+    )
     related = compute_related_notes(
         notes=notes,
         embeddings_by_path=embeddings_by_path,
