@@ -122,7 +122,6 @@ def get_or_compute_embeddings(
     logging.info("Embeddings to compute: %d", len(to_compute))
 
     if to_compute:
-        logging.info("pbm 1")
         texts = [n.clean_text for n in to_compute]
         new_embeddings = embedder.encode_texts(
             texts,
@@ -131,7 +130,6 @@ def get_or_compute_embeddings(
             status_callback=status_callback,
         )
 
-        logging.info("pbm 2")
         for note, emb in zip(to_compute, new_embeddings):
             save_cached_embedding(
                 conn=conn,
@@ -152,13 +150,11 @@ def compute_related_notes(
     similarity_threshold: float,
     max_links_per_note: int,
 ) -> dict[str, list[tuple[str, float]]]:
-    logging.info("pbm 3")
     ordered_embeddings = np.stack(
         [embeddings_by_path[n.rel_path] for n in notes], axis=0
     )
     sim = LocalEmbedder.cosine_sim_matrix(ordered_embeddings)
 
-    logging.info("pbm 4")
     related: dict[str, list[tuple[str, float]]] = {}
 
     for i, note in enumerate(notes):

@@ -5,6 +5,31 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 
+function rotateLogIfTooLarge(filePath: string, maxBytes: number = 2_000_000): void {
+    try {
+        if (!fs.existsSync(filePath)) {
+            return;
+        }
+
+        const stats = fs.statSync(filePath);
+
+        if (stats.size < maxBytes) {
+            return;
+        }
+
+        const rotatedPath = `${filePath}.1`;
+
+        if (fs.existsSync(rotatedPath)) {
+            fs.unlinkSync(rotatedPath);
+        }
+
+        fs.renameSync(filePath, rotatedPath);
+    } catch (error) {
+        console.error(`[PKM AI] Failed to rotate log file ${filePath}:`, error);
+    }
+}
+
+
 export default class PkmAiPlugin extends Plugin {
 	settings: PkmAiSettings;
 	private serverProcess: ChildProcess | null = null;
@@ -28,8 +53,14 @@ export default class PkmAiPlugin extends Plugin {
 			const logsDir = path.join(pluginDir, 'logs');
 			fs.mkdirSync(logsDir, { recursive: true });
 
-			const outLog = fs.openSync(path.join(logsDir, 'pkmai-server.out.log'), 'a');
-			const errLog = fs.openSync(path.join(logsDir, 'pkmai-server.err.log'), 'a');
+			const outLogPath = path.join(logsDir, 'pkmai-server.out.log');
+			const errLogPath = path.join(logsDir, 'pkmai-server.err.log');
+
+			rotateLogIfTooLarge(outLogPath);
+			rotateLogIfTooLarge(errLogPath);
+
+			const outLog = fs.openSync(outLogPath, 'a');
+			const errLog = fs.openSync(errLogPath, 'a');
 
 			this.serverProcess = spawn(exePath, [], {
 				cwd: pluginDir,

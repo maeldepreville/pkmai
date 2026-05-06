@@ -4,7 +4,6 @@ import hashlib
 import re
 from pathlib import Path
 from typing import Callable
-import logging
 
 
 # =========================
@@ -86,6 +85,5 @@ def clean_note_text(raw: str, author_title: str, link_title: str) -> str:
 
 
 def report_status(msg: str, status_callback: Callable[[str], None] | None):
-    logging.info("%s", msg)
     if status_callback:
         status_callback(msg)
