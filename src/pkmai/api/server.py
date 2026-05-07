@@ -7,8 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from pkmai.tasks import author_mirror_notes
-from pkmai.tasks import auto_links
+from pkmai.tasks import author_mirror_notes, auto_links, cleanup
+
 
 app = FastAPI(
     title="PKM AI Server",
@@ -172,3 +172,15 @@ async def sync_links(payload: PluginPayload, background_tasks: BackgroundTasks):
             "message": "Auto-Links sync started in the background.",
         }
     )
+
+
+@app.post("/api/v1/mirror/undo")
+async def undo_mirrors(payload: PluginPayload):
+    result = cleanup.undo_author_mirror(payload.model_dump())
+    return JSONResponse(content=result)
+
+
+@app.post("/api/v1/links/undo")
+async def undo_links(payload: PluginPayload):
+    result = cleanup.undo_auto_links(payload.model_dump())
+    return JSONResponse(content=result)

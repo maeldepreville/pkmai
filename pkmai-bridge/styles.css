@@ -85,3 +85,10 @@
 .pkmai-setting-card.setting-item {
     border: 1px solid var(--background-modifier-border) !important;
 }
+
+
+/* --- The Reset Buttons --- */
+.pkmai-danger-text {
+    color: var(--text-error);
+    font-weight: 600;
+}

@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { Modal, App, PluginSettingTab, Setting, Notice } from 'obsidian';
 import PkmAiPlugin from './main';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -15,6 +15,68 @@ declare global {
         };
     }
 }
+
+
+class ConfirmDangerModal extends Modal {
+    private readonly title: string;
+    private readonly message: string;
+    private readonly confirmText: string;
+    private readonly onConfirm: () => Promise<void>;
+
+    constructor(
+        app: App,
+        title: string,
+        message: string,
+        confirmText: string,
+        onConfirm: () => Promise<void>,
+    ) {
+        super(app);
+        this.title = title;
+        this.message = message;
+        this.confirmText = confirmText;
+        this.onConfirm = onConfirm;
+    }
+
+    onOpen() {
+        const { contentEl } = this;
+
+        contentEl.empty();
+
+        contentEl.createEl('h2', { text: this.title });
+
+        contentEl.createEl('p', {
+            text: this.message,
+        });
+
+        contentEl.createEl('p', {
+            text: 'This action cannot be automatically reversed.',
+            cls: 'pkmai-danger-text',
+        });
+
+        new Setting(contentEl)
+            .addButton((button) => {
+                button
+                    .setButtonText('Cancel')
+                    .onClick(() => {
+                        this.close();
+                    });
+            })
+            .addButton((button) => {
+                button
+                    .setButtonText(this.confirmText)
+                    .setWarning()
+                    .onClick(async () => {
+                        this.close();
+                        await this.onConfirm();
+                    });
+            });
+    }
+
+    onClose() {
+        this.contentEl.empty();
+    }
+}
+
 
 export interface PkmAiSettings {
 	vault: {
@@ -269,6 +331,31 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			);
+		
+		new Setting(containerEl)
+			.setName('Undo Auto-Links changes')
+			.setDesc(
+				'Remove the generated related-notes sections from your notes and clear the Auto-Links embedding cache.',
+			)
+			.addButton((button) => {
+				button
+					.setButtonText('Undo Auto-Links')
+					.setWarning()
+					.onClick(() => {
+						new ConfirmDangerModal(
+							this.app,
+							'Undo Auto-Links changes?',
+							'This will remove the generated related-notes section from your markdown notes and delete the Auto-Links cache.',
+							'Undo Auto-Links',
+							async () => {
+								await this.plugin.triggerUndo(
+									'/api/v1/links/undo',
+									'Auto-Links',
+								);
+							},
+						).open();
+					});
+			});
 
 
 		containerEl.createEl('h2', { text: '🧠 Author Mirror Configuration' });
@@ -472,6 +559,32 @@ export class PkmAiSettingTab extends PluginSettingTab {
 				})
 			);
 		
+		new Setting(containerEl)
+			.setName('Undo Author Mirror changes')
+			.setDesc(
+				'Remove generated Author Mirror sections, delete generated mirror notes, and clear the Author Mirror cache.',
+			)
+			.addButton((button) => {
+				button
+					.setButtonText('Undo Author Mirror')
+					.setWarning()
+					.onClick(() => {
+						new ConfirmDangerModal(
+							this.app,
+							'Undo Author Mirror changes?',
+							'This will remove generated Author Mirror sections from your source notes, delete generated mirror notes, and clear the Author Mirror cache.',
+							'Undo Author Mirror',
+							async () => {
+								await this.plugin.triggerUndo(
+									'/api/v1/mirror/undo',
+									'Author Mirror',
+								);
+							},
+						).open();
+					});
+			});
+		
+
 		containerEl.createEl('h2', { text: '📰 Debug Logs' });
 		
 		new Setting(containerEl)

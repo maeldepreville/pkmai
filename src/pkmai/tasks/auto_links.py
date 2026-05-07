@@ -225,72 +225,80 @@ def main(
     if not cfg.link_enabled:
         logging.info("Auto-links are disabled in settings. Skipping.")
         return
+    
+    conn = None
+    
+    try:
+        conn = init_embed_db(cfg.link_cache_db_path)
 
-    conn = init_embed_db(cfg.link_cache_db_path)
+        report_status("Scanning vault for notes...", status_callback)
+        note_files = find_note_files(cfg)
+        logging.info("Markdown files found: %d", len(note_files))
 
-    report_status("Scanning vault for notes...", status_callback)
-    note_files = find_note_files(cfg)
-    logging.info("Markdown files found: %d", len(note_files))
+        notes: list[NoteRecord] = []
+        for path in note_files:
+            try:
+                note = load_note_record(path, cfg.vault_path, cfg)
+                if note is not None:
+                    notes.append(note)
+            except Exception as e:
+                logging.exception("Failed to load note %s: %s", path, e)
 
-    notes: list[NoteRecord] = []
-    for path in note_files:
-        try:
-            note = load_note_record(path, cfg.vault_path, cfg)
-            if note is not None:
-                notes.append(note)
-        except Exception as e:
-            logging.exception("Failed to load note %s: %s", path, e)
+        logging.info("Notes retained after filtering: %d", len(notes))
 
-    logging.info("Notes retained after filtering: %d", len(notes))
+        existing_rel_paths = {n.rel_path for n in notes}
+        delete_missing_embed_entries(conn, existing_rel_paths)
 
-    existing_rel_paths = {n.rel_path for n in notes}
-    delete_missing_embed_entries(conn, existing_rel_paths)
+        if not notes:
+            logging.warning("No valid notes found.")
+            return
 
-    if not notes:
-        logging.warning("No valid notes found.")
-        return
+        report_status("Loading embedder...", status_callback)
+        embedder = LocalEmbedder(cfg.link_model_name)
 
-    report_status("Loading embedder...", status_callback)
-    embedder = LocalEmbedder(cfg.link_model_name)
+        report_status("Computing related notes...", status_callback)
+        embeddings_by_path = get_or_compute_embeddings(
+            conn,
+            embedder,
+            notes,
+            status_callback=status_callback,
+        )
+        related = compute_related_notes(
+            notes=notes,
+            embeddings_by_path=embeddings_by_path,
+            similarity_threshold=cfg.link_similarity_threshold,
+            max_links_per_note=cfg.max_links_per_note,
+        )
+        title_index = build_title_index(notes)
 
-    report_status("Computing related notes...", status_callback)
-    embeddings_by_path = get_or_compute_embeddings(
-        conn,
-        embedder,
-        notes,
-        status_callback=status_callback,
-    )
-    related = compute_related_notes(
-        notes=notes,
-        embeddings_by_path=embeddings_by_path,
-        similarity_threshold=cfg.link_similarity_threshold,
-        max_links_per_note=cfg.max_links_per_note,
-    )
-    title_index = build_title_index(notes)
+        updated_count = 0
 
-    updated_count = 0
+        report_status("Generating links...", status_callback)
+        for note in notes:
+            rel_candidates = related.get(note.rel_path, [])
+            related_paths = [rel_path for rel_path, _score in rel_candidates]
 
-    report_status("Generating links...", status_callback)
-    for note in notes:
-        rel_candidates = related.get(note.rel_path, [])
-        related_paths = [rel_path for rel_path, _score in rel_candidates]
+            try:
+                new_text = insert_related_section(
+                    note=note, related_paths=related_paths, title_index=title_index, cfg=cfg
+                )
 
-        try:
-            new_text = insert_related_section(
-                note=note, related_paths=related_paths, title_index=title_index, cfg=cfg
-            )
+                changed = update_note_file(note.path, new_text)
+                if changed:
+                    updated_count += 1
+                    logging.info("Updated: %s", note.rel_path)
 
-            changed = update_note_file(note.path, new_text)
-            if changed:
-                updated_count += 1
-                logging.info("Updated: %s", note.rel_path)
+            except Exception as e:
+                report_status("failed", status_callback)
+                logging.exception("Failed to update note %s: %s", note.rel_path, e)
 
-        except Exception as e:
-            report_status("failed", status_callback)
-            logging.exception("Failed to update note %s: %s", note.rel_path, e)
+        report_status("completed", status_callback)
+        logging.info("Done. Notes updated: %d / %d", updated_count, len(notes))
 
-    report_status("completed", status_callback)
-    logging.info("Done. Notes updated: %d / %d", updated_count, len(notes))
+    finally:
+        if conn is not None:
+            conn.close()
+            logging.info("Embedding cache database connection closed.")
 
 
 if __name__ == "__main__":

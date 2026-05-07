@@ -244,131 +244,139 @@ def main(
     if not cfg.author_mirror_enabled:
         logging.info("Author Mirror is disabled in settings. Skipping.")
         return
+    
+    conn = None
 
-    conn = init_author_db(cfg.author_cache_db_path)
+    try:
+        conn = init_author_db(cfg.author_cache_db_path)
 
-    if cfg.author_use_custom_path:
-        report_status("Loading custom local model...", status_callback)
-        model_path = Path(cfg.author_custom_path)
-        if not model_path.exists():
-            logging.error("Custom model path does not exist: %s", model_path)
-            return
-        logging.info("Using custom local model from: %s", model_path)
-    else:
-        logging.info(
-            "Ensuring recommended model %s is available...", cfg.author_filename
-        )
-        report_status(
-            "Downloading AI model (this may take a few minutes)...", status_callback
-        )
-        model_path = get_or_download_model(
-            repo_id=cfg.author_repo_id, filename=cfg.author_filename
-        )
-
-    report_status("Loading model into memory...", status_callback)
-    llm_provider = LlamaCppProvider(
-        model_path=model_path,
-        n_ctx=cfg.author_n_ctx,
-        n_threads=cfg.author_n_threads,
-    )
-
-    report_status("Scanning vault for notes...", status_callback)
-    files = get_note_files(cfg)
-    logging.info("Notes source trouvées: %d", len(files))
-
-    existing_rel_paths = {path.relative_to(cfg.vault_path).as_posix() for path in files}
-    delete_missing_author_entries(conn, existing_rel_paths)
-
-    created = 0
-    overwritten = 0
-    skipped = 0
-    skipped_unchanged = 0
-    failed = 0
-
-    report_status("Generating Author Mirrors...", status_callback)
-    for path in files:
-        source_title = path.stem
-        rel_path = path.relative_to(cfg.vault_path).as_posix()
-
-        try:
-            raw = path.read_text(encoding="utf-8")
-            source_text = clean_note_text(
-                raw, cfg.author_mirror_section_title, cfg.link_section_title
+        if cfg.author_use_custom_path:
+            report_status("Loading custom local model...", status_callback)
+            model_path = Path(cfg.author_custom_path)
+            if not model_path.exists():
+                logging.error("Custom model path does not exist: %s", model_path)
+                return
+            logging.info("Using custom local model from: %s", model_path)
+        else:
+            logging.info(
+                "Ensuring recommended model %s is available...", cfg.author_filename
             )
-            if len(source_text) < cfg.author_min_chars:
-                skipped += 1
-                logging.info("Skipped (too short): %s", source_title)
-                continue
+            report_status(
+                "Downloading AI model (this may take a few minutes)...", status_callback
+            )
+            model_path = get_or_download_model(
+                repo_id=cfg.author_repo_id, filename=cfg.author_filename
+            )
 
-            content_hash = sha256_text(source_text)
-            cached_hash = get_cached_hash(conn, rel_path)
+        report_status("Loading model into memory...", status_callback)
+        llm_provider = LlamaCppProvider(
+            model_path=model_path,
+            n_ctx=cfg.author_n_ctx,
+            n_threads=cfg.author_n_threads,
+        )
 
-            target_path = get_mirror_path(cfg, source_title)
-            mirror_rel_path = target_path.relative_to(cfg.vault_path).as_posix()
+        report_status("Scanning vault for notes...", status_callback)
+        files = get_note_files(cfg)
+        logging.info("Notes source trouvées: %d", len(files))
 
-            if cached_hash == content_hash and target_path.exists():
-                skipped_unchanged += 1
-                logging.info("Skipped (unchanged): %s", source_title)
-                continue
+        existing_rel_paths = {path.relative_to(cfg.vault_path).as_posix() for path in files}
+        delete_missing_author_entries(conn, existing_rel_paths)
 
-            if (
-                target_path.exists()
-                and not cfg.author_overwrite_existing
-                and cached_hash is None
-            ):
-                skipped += 1
-                logging.info(
-                    "Skipped (mirror exists, no cache history): %s", source_title
+        created = 0
+        overwritten = 0
+        skipped = 0
+        skipped_unchanged = 0
+        failed = 0
+
+        report_status("Generating Author Mirrors...", status_callback)
+        for path in files:
+            source_title = path.stem
+            rel_path = path.relative_to(cfg.vault_path).as_posix()
+
+            try:
+                raw = path.read_text(encoding="utf-8")
+                source_text = clean_note_text(
+                    raw, cfg.author_mirror_section_title, cfg.link_section_title
                 )
-                continue
+                if len(source_text) < cfg.author_min_chars:
+                    skipped += 1
+                    logging.info("Skipped (too short): %s", source_title)
+                    continue
 
-            # Generate JSON using our provider and the specific config settings
-            messages = get_messages(source_title, source_text)
-            raw_result = llm_provider.generate_json(
-                messages=messages,
-                max_tokens=cfg.author_max_tokens,
-                temperature=cfg.author_temperature,
-                repeat_penalty=cfg.author_repeat_penalty,
-            )
+                content_hash = sha256_text(source_text)
+                cached_hash = get_cached_hash(conn, rel_path)
 
-            result = normalize_result(raw_result)
-            md = render_markdown(source_title, result)
+                target_path = get_mirror_path(cfg, source_title)
+                mirror_rel_path = target_path.relative_to(cfg.vault_path).as_posix()
 
-            existed_before = target_path.exists()
-            target_path.write_text(md, encoding="utf-8", newline="\n")
+                if cached_hash == content_hash and target_path.exists():
+                    skipped_unchanged += 1
+                    logging.info("Skipped (unchanged): %s", source_title)
+                    continue
 
-            mirror_rel_path = target_path.relative_to(cfg.vault_path).as_posix()
-            add_mirror_link_to_source(path, mirror_rel_path, cfg)
+                if (
+                    target_path.exists()
+                    and not cfg.author_overwrite_existing
+                    and cached_hash is None
+                ):
+                    skipped += 1
+                    logging.info(
+                        "Skipped (mirror exists, no cache history): %s", source_title
+                    )
+                    continue
 
-            upsert_author_cache(
-                conn=conn,
-                rel_path=rel_path,
-                source_title=source_title,
-                content_hash=content_hash,
-                mirror_rel_path=mirror_rel_path,
-            )
+                # Generate JSON using our provider and the specific config settings
+                messages = get_messages(source_title, source_text)
+                raw_result = llm_provider.generate_json(
+                    messages=messages,
+                    max_tokens=cfg.author_max_tokens,
+                    temperature=cfg.author_temperature,
+                    repeat_penalty=cfg.author_repeat_penalty,
+                )
 
-            if existed_before:
-                overwritten += 1
-                logging.info("Updated mirror note: %s", target_path.name)
-            else:
-                created += 1
-                logging.info("Created mirror note: %s", target_path.name)
+                result = normalize_result(raw_result)
+                md = render_markdown(source_title, result)
 
-        except Exception as e:
-            failed += 1
-            report_status("failed", status_callback)
-            logging.exception("Erreur sur %s: %s", source_title, e)
+                existed_before = target_path.exists()
+                target_path.write_text(md, encoding="utf-8", newline="\n")
 
-    report_status("completed", status_callback)
-    logging.info(
-        "Done | created=%d overwritten=%d skipped=%d skipped_unchanged=%d failed=%d",
-        created,
-        overwritten,
-        skipped,
-        skipped_unchanged,
-        failed,
-    )
+                mirror_rel_path = target_path.relative_to(cfg.vault_path).as_posix()
+                add_mirror_link_to_source(path, mirror_rel_path, cfg)
+
+                upsert_author_cache(
+                    conn=conn,
+                    rel_path=rel_path,
+                    source_title=source_title,
+                    content_hash=content_hash,
+                    mirror_rel_path=mirror_rel_path,
+                )
+
+                if existed_before:
+                    overwritten += 1
+                    logging.info("Updated mirror note: %s", target_path.name)
+                else:
+                    created += 1
+                    logging.info("Created mirror note: %s", target_path.name)
+
+            except Exception as e:
+                failed += 1
+                report_status("failed", status_callback)
+                logging.exception("Erreur sur %s: %s", source_title, e)
+
+        report_status("completed", status_callback)
+        logging.info(
+            "Done | created=%d overwritten=%d skipped=%d skipped_unchanged=%d failed=%d",
+            created,
+            overwritten,
+            skipped,
+            skipped_unchanged,
+            failed,
+        )
+
+    finally:
+        if conn is not None:
+            conn.close()
+            logging.info("Author Mirror cache database connection closed.")
 
 
 if __name__ == "__main__":

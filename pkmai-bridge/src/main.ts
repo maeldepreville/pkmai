@@ -177,6 +177,49 @@ export default class PkmAiPlugin extends Plugin {
 		}, 1000);
 	}
 
+	async triggerUndo(endpoint: string, taskName: string): Promise<void> {
+		if (!this.settings.vault.path) {
+			new Notice('Error: Please set your Vault Path in the PKM AI settings.');
+			return;
+		}
+
+		try {
+			const payload = JSON.parse(JSON.stringify(this.settings));
+
+			payload.vault.ignored_dirs = this.settings.vault.ignored_dirs
+				.split(',')
+				.map((s: string) => s.trim())
+				.filter((s: string) => s.length > 0);
+
+			const response = await requestUrl({
+				url: `http://127.0.0.1:8000${endpoint}`,
+				method: 'POST',
+				contentType: 'application/json',
+				body: JSON.stringify(payload),
+			});
+
+			if (response.status !== 200) {
+				new Notice(`${taskName} cleanup failed. Check logs.`);
+				return;
+			}
+
+			const result = response.json;
+
+			if (endpoint.includes('/links/')) {
+				new Notice(
+					`${taskName} cleanup complete. Updated ${result.updated_notes} notes.`,
+				);
+			} else {
+				new Notice(
+					`${taskName} cleanup complete. Updated ${result.updated_notes} notes and deleted ${result.deleted_generated_notes} generated notes.`,
+				);
+			}
+		} catch (error) {
+			console.error(`[PKM AI] Failed to run cleanup for ${taskName}:`, error);
+			new Notice(`${taskName} cleanup failed. Check logs.`);
+		}
+	}
+
 	async onunload() {
         if (this.serverProcess) {
             console.log('[PKM AI] Shutting down background server...');

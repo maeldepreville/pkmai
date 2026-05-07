@@ -14,6 +14,9 @@ This project bridges a local Python backend with an Obsidian frontend, allowing 
 - **Obsidian Native Configuration:** Say goodbye to editing YAML files. The plugin features a comprehensive native settings menu inside Obsidian to control model paths, similarity thresholds, and ignored directories.
 - **Live Status Polling:** Features a dynamic UI progress tracker in the Obsidian status bar so you always know what the background engine is processing.
 - **Smart Caching:** Uses SQLite to cache document hashes and high-dimensional vectors, ensuring that AI models only process notes that have actually been modified.
+- **Undo / Cleanup Actions:** Each major task can be reverted from the Obsidian settings panel. Auto-Links cleanup removes generated related-note sections and clears the embedding cache. Author Mirror cleanup removes generated mirror sections, deletes generated mirror notes, and clears the associated cache.
+- **Background Server Logs:** The bundled backend runs silently in the background and writes diagnostic logs to the plugin's `logs/` folder. Logs are automatically rotated or pruned to avoid unbounded growth.
+- **Safe Local Runtime:** Expensive model work is batched and tracked through the Obsidian status bar, making long-running embedding or generation tasks observable instead of appearing frozen.
 
 
 ## Architecture
@@ -21,15 +24,25 @@ This project bridges a local Python backend with an Obsidian frontend, allowing 
 ```mermaid
 graph LR
     A[Obsidian UI] -->|Spawns & Configures| B(Compiled Python Executable)
-    B --> C{Task Router}
+    A -->|Task requests| C{FastAPI Router}
+    B --> C
+
     C -->|Auto-Links| D[SentenceTransformers]
     C -->|Author Mirror| E[llama.cpp]
+    C -->|Cleanup / Undo| I[Cleanup Tasks]
+
     C -->|Model Manager| H[Hugging Face]
-    D <--> F[(SQLite Cache)]
-    E <--> F
     H -->|Auto-Downloads| E
+
+    D <--> F[(SQLite Caches)]
+    E <--> F
+    I --> F
+
     D --> G[Markdown Vault]
     E --> G
+    I --> G
+
+    B --> J[Local Logs]
 ```
 
 
@@ -80,6 +93,18 @@ Once the plugin is installed and enabled, the TypeScript bridge will **automatic
 - Click the link or user icons in the Obsidian sidebar to trigger the respective background processes.
 - Watch the bottom-right status bar for live polling updates (e.g., Downloading Model... ➔ Generating... ➔ Complete!).
 
+Long-running tasks are executed by the local backend server and tracked through the Obsidian status bar. Embedding work is processed in batches, so large vaults may take time on CPU-only machines.
+
+If something goes wrong, open **PKM AI Settings → Debug logs → Open logs folder** and inspect:
+
+```text
+pkmai-server.out.log
+pkmai-server.err.log
+auto_links_*.log
+author_mirror_*.log
+cleanup_*.log
+```
+
 ### The CLI (For Developers)
 
 The project includes a fully featured Typer CLI. If you are developing from source, you can run tasks manually from the terminal using your `config.yaml` file:
@@ -90,6 +115,69 @@ pkmai links         # Run the Auto-Links pipeline manually
 pkmai mirror        # Run the Author Mirror pipeline manually
 pkmai mirror -f     # Force regenerate mirrors, bypassing the cache
 ```
+
+
+## Debugging
+
+The backend server is launched silently by Obsidian. On Windows and macOS, no terminal window should appear during normal usage.
+
+Runtime logs are available from the Obsidian settings panel via **Open logs folder**.
+
+Typical files:
+
+```text
+logs/
+├── pkmai-server.out.log              # backend stdout / server lifecycle
+├── pkmai-server.err.log              # backend stderr / crashes
+├── pkmai-server.out.previous.log     # rotated previous stdout log
+├── pkmai-server.err.previous.log     # rotated previous stderr log
+├── auto_links_YYYYMMDD_HHMMSS.log    # Auto-Links task log
+└── author_mirror_YYYYMMDD_HHMMSS.log # Author Mirror task log
+```
+
+Task logs are automatically pruned. Server logs are rotated by size.
+
+
+## Runtime Folders
+
+When the plugin runs, it may create the following local folders inside the plugin directory or configured project directory:
+
+```text
+pkmai-bridge/
+├── logs/   # Backend server logs and task logs
+├── bin/    # Bundled Python backend executable
+└── data/   # SQLite caches for embeddings and generated task state
+```
+
+The plugin uses SQLite caches to avoid recomputing embeddings or regenerating outputs unnecessarily. These caches are local-only and can be cleared through the cleanup buttons in the Obsidian settings panel.
+
+Logs are also local-only. They are useful for debugging packaged releases because the backend server runs without a visible terminal window.
+
+Be careful with the `data/` wording if your `data/` folder is actually outside `pkmai-bridge/` depending on settings.
+
+
+## Undo / Cleanup Actions
+
+PKM AI includes cleanup buttons in the Obsidian settings panel.
+
+### Undo Auto-Links
+
+This action:
+
+- removes the generated related-notes section from markdown notes;
+- deletes the Auto-Links embedding cache database.
+
+It does not delete the original notes.
+
+### Undo Author Mirror
+
+This action:
+
+- removes the generated Author Mirror section from source notes;
+- deletes generated Author Mirror notes from the configured output folder;
+- deletes the Author Mirror cache database.
+
+Before running a cleanup action, Obsidian displays a confirmation modal to prevent accidental deletion.
 
 
 ## Technical Stack
