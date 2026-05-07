@@ -244,7 +244,7 @@ def main(
     if not cfg.author_mirror_enabled:
         logging.info("Author Mirror is disabled in settings. Skipping.")
         return
-    
+
     conn = None
 
     try:
@@ -279,7 +279,9 @@ def main(
         files = get_note_files(cfg)
         logging.info("Notes source trouvées: %d", len(files))
 
-        existing_rel_paths = {path.relative_to(cfg.vault_path).as_posix() for path in files}
+        existing_rel_paths = {
+            path.relative_to(cfg.vault_path).as_posix() for path in files
+        }
         delete_missing_author_entries(conn, existing_rel_paths)
 
         created = 0

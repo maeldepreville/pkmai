@@ -225,9 +225,9 @@ def main(
     if not cfg.link_enabled:
         logging.info("Auto-links are disabled in settings. Skipping.")
         return
-    
+
     conn = None
-    
+
     try:
         conn = init_embed_db(cfg.link_cache_db_path)
 
@@ -280,7 +280,10 @@ def main(
 
             try:
                 new_text = insert_related_section(
-                    note=note, related_paths=related_paths, title_index=title_index, cfg=cfg
+                    note=note,
+                    related_paths=related_paths,
+                    title_index=title_index,
+                    cfg=cfg,
                 )
 
                 changed = update_note_file(note.path, new_text)
