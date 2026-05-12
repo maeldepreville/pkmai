@@ -30,6 +30,7 @@ config.yaml
 pkmai-bridge/node_modules
 pkmai-bridge/main.js
 pkmai-bridge/data.json
+pkmai-bridge/bin
 *.map
 
 # PyInstaller Build Artifacts

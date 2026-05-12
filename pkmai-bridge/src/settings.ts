@@ -1,4 +1,4 @@
-import { Modal, App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { Modal, App, PluginSettingTab, Setting, Notice, normalizePath } from 'obsidian';
 import PkmAiPlugin from './main';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -121,8 +121,8 @@ export interface PkmAiSettings {
 
 export const DEFAULT_SETTINGS: PkmAiSettings = {
 	vault: {
-		path: 'path/to/your/vault',
-		notes_root_dir: 'YourNotesDirName',
+		path: '',
+		notes_root_dir: '',
 		ignored_dirs: '.obsidian,Templates,Archive,logs,data,Auteurs Miroirs'
 	},
 	auto_links: {
@@ -130,7 +130,7 @@ export const DEFAULT_SETTINGS: PkmAiSettings = {
 		similarity_threshold: 0.55,
 		max_links_per_note: 5,
 		min_note_chars: 50,
-		section_title: 'Notes Connexes',
+		section_title: 'Related Notes',
 		allow_rewrite_related_section: true,
 		insert_only_if_missing: true,
 		embedding: { model_name: 'BAAI/bge-m3' },
@@ -138,9 +138,9 @@ export const DEFAULT_SETTINGS: PkmAiSettings = {
 	},
 	author_mirror: {
 		enabled: true,
-		output_dir: 'Auteurs Miroirs',
-		prefix: '[Auteur-Miroir]',
-		section_title: 'Auteur Miroir',
+		output_dir: 'Mirror Authors',
+		prefix: '[Mirror-Author]',
+		section_title: 'Mirror Author',
 		min_chars: 120,
 		max_note_chars: 24000,
 		overwrite_existing: true,
@@ -168,40 +168,87 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	private getPluginAssetUrl(assetRelativePath: string): string {
+		const vaultRelativePath = normalizePath(
+			`${this.app.vault.configDir}/plugins/${this.plugin.manifest.id}/${assetRelativePath}`
+		);
+
+		return this.app.vault.adapter.getResourcePath(vaultRelativePath);
+	}
+
+	private createInfoPanel(
+		containerEl: HTMLElement,
+		title: string,
+		description: string,
+		bullets: string[],
+	): void {
+		const details = containerEl.createEl('details', {
+			cls: 'pkmai-settings-info-panel',
+		});
+
+		details.createEl('summary', {
+			text: title,
+		});
+
+		details.createEl('p', {
+			text: description,
+			cls: 'pkmai-settings-info-description',
+		});
+
+		const list = details.createEl('ul', {
+			cls: 'pkmai-settings-info-list',
+		});
+
+		for (const bullet of bullets) {
+			list.createEl('li', { text: bullet });
+		}
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
 		containerEl.addClass('pkmai-settings-container');
+
 		const header = containerEl.createDiv({ cls: 'pkmai-settings-header' });
-        header.createEl('h1', { text: 'PKM AI' });
-        header.createEl('p', { 
-            text: 'Local, private AI orchestration for your vault.', 
-            cls: 'pkmai-settings-subtitle' 
-        });
+		header.style.setProperty(
+			'--pkmai-header-bg',
+			`url("${this.getPluginAssetUrl('assets/header-bg.png')}")`
+		);
+		header.createEl('img', {
+			cls: 'pkmai-settings-logo',
+			attr: {
+				src: this.getPluginAssetUrl('assets/logo.png'),
+				alt: 'PKM AI logo',
+			},
+		});
+		header.createEl('h1', { text: 'PKM AI' });
+		header.createEl('p', {
+			text: 'Local, private AI orchestration for your vault.',
+			cls: 'pkmai-settings-subtitle',
+		});
 
 		containerEl.createEl('h2', { text: '📁 Vault Settings' });
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
-			.setName('Absolute Vault Path')
-			.setDesc('Local path to your Obsidian vault.')
-			.addText(text => text
-				.setValue(this.plugin.settings.vault.path)
-				.onChange(async (value) => {
-					this.plugin.settings.vault.path = value;
-					await this.plugin.saveSettings();
-				})
-			);
+			.setName('Detected Vault Path')
+			.setDesc('Automatically detected from the currently opened Obsidian vault.')
+			.addText((text) => {
+				text
+					.setValue(this.plugin.getCurrentVaultPath() ?? 'Unavailable')
+					.setDisabled(true);
+			});
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
 			.setName('Notes Root Directory')
-			.setDesc('Notes directory name in your Obsidian vault.')
+			.setDesc('Optional. Leave empty to process the whole vault, or set a subfolder such as "Notes".')
 			.addText(text => text
+				.setPlaceholder('Notes')
 				.setValue(this.plugin.settings.vault.notes_root_dir)
 				.onChange(async (value) => {
-					this.plugin.settings.vault.notes_root_dir = value;
+					this.plugin.settings.vault.notes_root_dir = value.trim();
 					await this.plugin.saveSettings();
 				})
 			);
@@ -220,6 +267,21 @@ export class PkmAiSettingTab extends PluginSettingTab {
 
 
 		containerEl.createEl('h2', { text: '🕸️ Auto-Links Configuration' });
+
+		this.createInfoPanel(
+			containerEl,
+			'What does Auto-Links do?',
+			'Auto-Links analyzes your markdown notes and inserts a generated section containing semantically related notes.',
+			[
+				'Scans markdown files in the configured notes root directory.',
+				'Ignores folders listed in the ignored directories setting.',
+				'Cleans note text before embedding to avoid linking based on generated sections.',
+				'Computes local embeddings with the configured SentenceTransformers model.',
+				'Uses a SQLite cache so unchanged notes are not embedded again.',
+				'Adds a related-notes section to each note when similar notes pass the similarity threshold.',
+				'Can be undone from the cleanup button below.',
+			],
+		);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -331,7 +393,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			);
-		
+
 		new Setting(containerEl)
 			.setName('Undo Auto-Links changes')
 			.setDesc(
@@ -359,6 +421,21 @@ export class PkmAiSettingTab extends PluginSettingTab {
 
 
 		containerEl.createEl('h2', { text: '🧠 Author Mirror Configuration' });
+
+		this.createInfoPanel(
+			containerEl,
+			'What does Author Mirror do?',
+			'Author Mirror reads your notes and generates a dialectical reflection using a local LLM.',
+			[
+				'Scans eligible markdown notes in the configured notes root directory.',
+				'Uses a local llama.cpp-compatible model, either auto-downloaded or manually selected.',
+				'Generates a supporting perspective and an opposing perspective.',
+				'Creates generated mirror notes in the configured output folder.',
+				'Can insert or update an Author Mirror section in the source note.',
+				'Uses a local SQLite cache to avoid regenerating unchanged outputs.',
+				'Can be undone from the cleanup button below.',
+			],
+		);
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
@@ -558,7 +635,7 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			);
-		
+
 		new Setting(containerEl)
 			.setName('Undo Author Mirror changes')
 			.setDesc(
@@ -595,13 +672,10 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					.setButtonText('Open logs folder')
 					.onClick(async () => {
 						const logsDir = path.join(
-							this.plugin.settings.vault.path,
-							this.plugin.settings.vault.notes_root_dir,
-							'.obsidian',
-							'plugins',
-							this.plugin.manifest.id,
+							this.plugin.getPluginDir(),
 							'logs'
 						);
+
 						fs.mkdirSync(logsDir, { recursive: true });
 
 						const shell = window.electron?.remote?.shell;

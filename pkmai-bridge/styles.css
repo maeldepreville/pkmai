@@ -30,31 +30,80 @@
     padding-bottom: 2rem; 
 }
 
+
+/* The Settings Heads */
+.pkmai-settings-container h2 {
+    padding-top: 2rem; 
+}
+
+
 /* --- The Hero Header --- */
 .pkmai-settings-header {
+    position: relative;
+    overflow: hidden;
     text-align: center;
-    padding: 2rem 0;
+    padding: 2rem 1.5rem;
     margin-bottom: 2rem;
-    background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-primary) 100%);
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--background-modifier-border);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+
+    background-image:
+        linear-gradient(
+            135deg,
+            rgba(10, 10, 20, 0.72),
+            rgba(20, 20, 40, 0.42)
+        ),
+        var(--pkmai-header-bg);
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.pkmai-settings-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(
+            circle at top center,
+            rgba(255, 255, 255, 0.12),
+            transparent 45%
+        );
+    pointer-events: none;
+}
+
+.pkmai-settings-header > * {
+    position: relative;
+    z-index: 1;
+}
+
+.pkmai-settings-header .pkmai-settings-logo {
+    display: block;
+    width: 72px;
+    height: 72px;
+    object-fit: contain;
+    margin: 0 auto 1rem auto;
+    border-radius: 16px;
 }
 
 .pkmai-settings-header h1 {
     margin: 0;
     font-size: 2.5em;
     font-weight: 800;
-    background: -webkit-linear-gradient(45deg, var(--text-accent), var(--text-accent-hover));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff;
+    letter-spacing: -0.03em;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
 }
 
 .pkmai-settings-header .pkmai-settings-subtitle {
     margin-top: 0.5rem;
-    color: var(--text-muted);
+    color: rgba(255, 255, 255, 0.82);
     font-size: 1.1em;
+    text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
 }
+
 
 /* --- The Setting Cards --- */
 .pkmai-setting-card {
@@ -84,6 +133,42 @@
 
 .pkmai-setting-card.setting-item {
     border: 1px solid var(--background-modifier-border) !important;
+}
+
+
+/* The Summary details */
+.pkmai-settings-info-panel {
+    margin: 1rem 0 1.5rem 0;
+    padding: 0.85rem 1rem;
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 10px;
+}
+
+.pkmai-settings-info-panel summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: var(--text-normal);
+}
+
+.pkmai-settings-info-panel[open] summary {
+    margin-bottom: 0.75rem;
+}
+
+.pkmai-settings-info-description {
+    margin: 0 0 0.75rem 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+.pkmai-settings-info-list {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.pkmai-settings-info-list li {
+    margin: 0.35rem 0;
+    line-height: 1.45;
 }
 
 

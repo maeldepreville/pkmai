@@ -1,4 +1,4 @@
-import { Plugin, Notice, requestUrl } from 'obsidian';
+import { Plugin, Notice, requestUrl, FileSystemAdapter } from 'obsidian';
 import { PkmAiSettings, DEFAULT_SETTINGS, PkmAiSettingTab } from './settings';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
@@ -34,15 +34,56 @@ export default class PkmAiPlugin extends Plugin {
 	settings: PkmAiSettings;
 	private serverProcess: ChildProcess | null = null;
 
+	getCurrentVaultPath(): string | null {
+		const adapter = this.app.vault.adapter;
+
+		if (adapter instanceof FileSystemAdapter) {
+			return adapter.getBasePath();
+		}
+
+		return null;
+	}
+
+	getPluginDir(): string {
+		const vaultPath = this.getCurrentVaultPath();
+
+		if (!vaultPath) {
+			throw new Error('Could not detect current Obsidian vault path.');
+		}
+
+		if (!this.manifest.dir) {
+			throw new Error('Plugin directory is undefined.');
+		}
+
+		return path.join(vaultPath, this.manifest.dir);
+	}
+
+	buildBackendPayload(): PkmAiSettings {
+		const vaultPath = this.getCurrentVaultPath();
+
+		if (!vaultPath) {
+			throw new Error('Could not detect current Obsidian vault path.');
+		}
+
+		const payload = JSON.parse(JSON.stringify(this.settings));
+
+		payload.vault.path = vaultPath;
+		payload.vault.notes_root_dir =
+			this.settings.vault.notes_root_dir?.trim() ?? '';
+
+		payload.vault.ignored_dirs = this.settings.vault.ignored_dirs
+			.split(',')
+			.map((s: string) => s.trim())
+			.filter((s: string) => s.length > 0);
+
+		return payload;
+	}
+
 	async onload() {
 		await this.loadSettings();
 
 		try {
-            const basePath = (this.app.vault.adapter as any).getBasePath();
-			if (!this.manifest.dir) {
-                throw new Error("Plugin directory is undefined.");
-            }
-            const pluginDir = path.join(basePath, this.manifest.dir);
+			const pluginDir = this.getPluginDir();
             
             const isWindows = process.platform === 'win32';
             const exeName = isWindows ? 'pkmai-server.exe' : 'pkmai-server';
@@ -111,19 +152,14 @@ export default class PkmAiPlugin extends Plugin {
 	}
 
 	async triggerApi(endpoint: string, taskName: string) {
-        if (!this.settings.vault.path) {
-            new Notice(`Error: Please set your Vault Path in the PKM AI settings.`);
-            return;
-        }
-
 		const statusBarItem = this.addStatusBarItem();
 		statusBarItem.addClass('pkmai-status-bar-item');
 		statusBarItem.addClass('pkmai-status-processing');
 		statusBarItem.setText(`⏳ ${taskName}: Initializing...`);
 
 		try {
-			const payload = JSON.parse(JSON.stringify(this.settings));
-            payload.vault.ignored_dirs = this.settings.vault.ignored_dirs.split(',').map((s: string) => s.trim());
+			const payload = this.buildBackendPayload();
+
 			const response = await requestUrl({
 				url: `http://127.0.0.1:8000${endpoint}`,
 				method: 'POST',
@@ -178,18 +214,8 @@ export default class PkmAiPlugin extends Plugin {
 	}
 
 	async triggerUndo(endpoint: string, taskName: string): Promise<void> {
-		if (!this.settings.vault.path) {
-			new Notice('Error: Please set your Vault Path in the PKM AI settings.');
-			return;
-		}
-
 		try {
-			const payload = JSON.parse(JSON.stringify(this.settings));
-
-			payload.vault.ignored_dirs = this.settings.vault.ignored_dirs
-				.split(',')
-				.map((s: string) => s.trim())
-				.filter((s: string) => s.length > 0);
+			const payload = this.buildBackendPayload();
 
 			const response = await requestUrl({
 				url: `http://127.0.0.1:8000${endpoint}`,
