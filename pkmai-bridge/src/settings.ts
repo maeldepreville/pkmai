@@ -97,6 +97,8 @@ export interface PkmAiSettings {
 	};
 	author_mirror: {
 		enabled: boolean;
+		output_language: string;
+		custom_output_language: string;
 		output_dir: string;
 		prefix: string;
 		section_title: string;
@@ -138,6 +140,8 @@ export const DEFAULT_SETTINGS: PkmAiSettings = {
 	},
 	author_mirror: {
 		enabled: true,
+		output_language: 'english',
+		custom_output_language: '',
 		output_dir: 'Mirror Authors',
 		prefix: '[Mirror-Author]',
 		section_title: 'Mirror Author',
@@ -447,6 +451,39 @@ export class PkmAiSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				})
 			);
+		
+		new Setting(containerEl)
+			.setClass('pkmai-setting-card')
+			.setName('Output language')
+			.setDesc('Choose the language used for generated Author Mirror notes.')
+			.addDropdown((dropdown) => {
+				dropdown
+					.addOption('english', 'English')
+					.addOption('french', 'French')
+					.addOption('custom', 'Custom language')
+					.setValue(this.plugin.settings.author_mirror.output_language)
+					.onChange(async (value) => {
+						this.plugin.settings.author_mirror.output_language = value;
+						await this.plugin.saveSettings();
+						this.display();
+					});
+			});
+		
+		if (this.plugin.settings.author_mirror.output_language === 'custom') {
+			new Setting(containerEl)
+				.setClass('pkmai-setting-card')
+				.setName('Custom output language')
+				.setDesc('Example: Spanish, German, Italian, Portuguese, Japanese...')
+				.addText((text) => {
+					text
+						.setPlaceholder('Custom Language...')
+						.setValue(this.plugin.settings.author_mirror.custom_output_language)
+						.onChange(async (value) => {
+							this.plugin.settings.author_mirror.custom_output_language = value.trim();
+							await this.plugin.saveSettings();
+						});
+				});
+		}
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')

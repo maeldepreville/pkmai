@@ -18,6 +18,8 @@ class Config:
     notes_root_dir: str
 
     author_mirror_enabled: bool
+    author_output_language: str
+    author_custom_output_language: str
     author_mirror_dir: str
     author_mirror_prefix: str
     author_mirror_section_title: str
@@ -67,6 +69,8 @@ def load_config(
         ignored_dirs=raw["vault"]["ignored_dirs"],
         notes_root_dir=raw["vault"]["notes_root_dir"],
         author_mirror_enabled=raw["author_mirror"]["enabled"],
+        author_output_language=raw["author_mirror"]["output_language"],
+        author_custom_output_language=raw["author_mirror"]["custom_output_language"],
         author_mirror_dir=raw["author_mirror"]["output_dir"],
         author_mirror_prefix=raw["author_mirror"]["prefix"],
         author_mirror_section_title=raw["author_mirror"]["section_title"],

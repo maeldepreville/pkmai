@@ -65,6 +65,8 @@ class ModelConfig(BaseModel):
 
 class AuthorMirrorConfig(BaseModel):
     enabled: bool
+    output_language: str
+    custom_output_language: str
     output_dir: str
     prefix: str
     section_title: str

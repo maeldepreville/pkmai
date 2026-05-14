@@ -14,9 +14,11 @@ auto_links:
 
 author_mirror:
   enabled: true
-  output_dir: &mirror_dir "Auteurs Miroirs"
-  prefix: "[Auteur-Miroir]"
-  section_title: "Auteur Miroir"
+  output_language: "english"
+  custom_output_language: ""
+  output_dir: &mirror_dir "Mirror Authors"
+  prefix: "[Mirror-Author]"
+  section_title: "Mirror Author"
   min_chars: 120
   max_note_chars: 24000
   overwrite_existing: true

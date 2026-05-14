@@ -57,7 +57,7 @@ def get_mirror_path(cfg: Config, source_title: str) -> Path:
     notes_root = get_notes_root_path(cfg)
     mirror_dir = notes_root / cfg.author_mirror_dir
     mirror_dir.mkdir(parents=True, exist_ok=True)
-    filename = f"{cfg.author_mirror_prefix} Sur {source_title}.md"
+    filename = f"{cfg.author_mirror_prefix} - {source_title}.md"
     return mirror_dir / filename
 
 
@@ -85,50 +85,6 @@ def add_mirror_link_to_source(
 # =========================
 
 
-def get_messages(source_title: str, source_text: str) -> list[dict[str, str]]:
-    system_instruction = """Tu dois analyser une note personnelle et proposer DEUX auteurs, philosophes, penseurs ou essayistes réels pour former une dynamique de THÈSE et d'ANTITHÈSE autour du contenu de cette note.
-
-Objectifs :
-1. THÈSE : Proposer un auteur dont la pensée est la plus proche du contenu de la note, pour en approfondir l'idée.
-2. ANTITHÈSE : Proposer un deuxième auteur qui s'oppose radicalement, critique, ou offre une perspective inversée sur cette même idée.
-
-Contraintes impératives :
-- Choisis des auteurs réels et distincts. N'invente ni auteur, ni œuvre.
-- Si tu n'es pas sûr des œuvres exactes, indique seulement celles dont tu es confiant.
-- Réponds uniquement en JSON strict, avec une structure parfaitement PLATE (aucun sous-dictionnaire).
-- Pas de markdown dans les champs. Pas de texte hors JSON.
-
-Consignes pour les "warnings" :
-- Si tu as des réserves (ex: rapprochement lointain), sois très bref. 
-- Si tu n'as absolument aucune réserve, tu DOIS écrire : "Aucune réserve quant à la proposition".
-
-Format attendu (JSON STRICT ET PLAT) :
-{
-  "these_auteur": "Nom de l'auteur (Thèse)",
-  "these_oeuvres": ["Ouvrage 1", "Ouvrage 2"],
-  "these_confiance": "faible|moyen|élevé",
-  "these_pourquoi": "2 à 4 phrases expliquant en quoi cet auteur valide la note",
-  "these_synthese": "5 à 10 phrases synthétisant sa pensée sur le sujet",
-  "these_warnings": "Brève réserve, ou 'Aucune réserve quant à la proposition'",
-  "antithese_auteur": "Nom de l'auteur (Antithèse)",
-  "antithese_oeuvres": ["Ouvrage 1", "Ouvrage 2"],
-  "antithese_confiance": "faible|moyen|élevé",
-  "antithese_pourquoi": "2 à 4 phrases expliquant en quoi cet auteur s'oppose à la note",
-  "antithese_synthese": "5 à 10 phrases synthétisant sa pensée critique sur le sujet",
-  "antithese_warnings": "Brève réserve, ou 'Aucune réserve quant à la proposition'",
-  "mots_cles": ["mot-clé 1", "mot-clé 2"]
-}"""
-
-    user_content = (
-        f"Titre de la note :\n{source_title}\n\nContenu de la note :\n{source_text}"
-    )
-
-    return [
-        {"role": "system", "content": system_instruction},
-        {"role": "user", "content": user_content},
-    ]
-
-
 def sanitize_field(value: Any) -> str:
     if value is None:
         return ""
@@ -148,84 +104,288 @@ def sanitize_list(value: Any) -> list[str]:
     return result
 
 
-def normalize_result(data: dict[str, Any]) -> dict[str, Any]:
-    these_auteur = sanitize_field(data.get("these_auteur") or data.get("These_auteur"))
-    anti_auteur = sanitize_field(
-        data.get("antithese_auteur") or data.get("Antithese_auteur")
+def resolve_output_language(
+    output_language: str,
+    custom_output_language: str = "",
+) -> str:
+    output_language = sanitize_field(output_language).lower()
+    custom_output_language = sanitize_field(custom_output_language)
+
+    if output_language == "french":
+        return "French"
+
+    if output_language == "custom" and custom_output_language:
+        return custom_output_language
+
+    return "English"
+
+
+def get_language_instruction(resolved_language: str) -> str:
+    if resolved_language.lower() == "english":
+        return """LANGUAGE REQUIREMENT:
+- Write every human-readable JSON value in English.
+- JSON keys must stay in English.
+- Confidence values must stay exactly one of: low, medium, high.
+- Author names and work titles may stay in their original language."""
+
+    return f"""LANGUAGE REQUIREMENT:
+- Write every human-readable JSON value in {resolved_language}.
+- The following fields MUST be in {resolved_language}:
+  thesis_why, thesis_synthesis, thesis_warnings,
+  antithesis_why, antithesis_synthesis, antithesis_warnings,
+  keywords.
+- Do NOT write explanations in English.
+- JSON keys must stay in English.
+- Confidence values must stay exactly one of: low, medium, high.
+- Author names and work titles may stay in their original language."""
+
+
+def get_messages(
+    source_title: str,
+    source_text: str,
+    output_language: str,
+    custom_output_language: str = "",
+) -> list[dict[str, str]]:
+    resolved_language = resolve_output_language(
+        output_language=output_language,
+        custom_output_language=custom_output_language,
     )
 
-    if not these_auteur or not anti_auteur:
+    language_instruction = get_language_instruction(resolved_language)
+
+    system_instruction = f"""You analyze a personal markdown note and propose TWO real authors, philosophers, thinkers, or essayists in a THESIS / ANTITHESIS dynamic.
+
+{language_instruction}
+
+Goal:
+1. THESIS: Propose one author whose thought is closest to the note and can deepen its main idea.
+2. ANTITHESIS: Propose another author who strongly disagrees, criticizes, or offers an opposite perspective.
+
+Strict constraints:
+- Choose real and distinct authors.
+- Do not invent authors or works.
+- If you are not confident about exact works, only mention works you are confident about.
+- Respond only with strict JSON.
+- Use a flat JSON object. Do not use nested dictionaries.
+- Do not include markdown inside fields.
+- Do not include any text outside the JSON object.
+
+Expected strict flat JSON format:
+{{
+  "thesis_author": "Author name",
+  "thesis_works": ["Work 1", "Work 2"],
+  "thesis_confidence": "low|medium|high",
+  "thesis_why": "2 to 4 sentences in the requested language",
+  "thesis_synthesis": "5 to 10 sentences in the requested language",
+  "thesis_warnings": "Brief reservation in the requested language, or no particular reservation",
+  "antithesis_author": "Author name",
+  "antithesis_works": ["Work 1", "Work 2"],
+  "antithesis_confidence": "low|medium|high",
+  "antithesis_why": "2 to 4 sentences in the requested language",
+  "antithesis_synthesis": "5 to 10 sentences in the requested language",
+  "antithesis_warnings": "Brief reservation in the requested language, or no particular reservation",
+  "keywords": ["keyword 1", "keyword 2"]
+}}"""
+
+    user_content = (
+        f"Note title:\n{source_title}\n\n"
+        f"Note content:\n{source_text}"
+    )
+
+    return [
+        {"role": "system", "content": system_instruction},
+        {"role": "user", "content": user_content},
+    ]
+
+
+# To update with future multi-lingual feature.
+def migrate_legacy_french_keys(data: dict[str, Any]) -> dict[str, Any]:
+    legacy_map = {
+        "these_auteur": "thesis_author",
+        "These_auteur": "thesis_author",
+        "these_oeuvres": "thesis_works",
+        "these_œuvres": "thesis_works",
+        "these_confiance": "thesis_confidence",
+        "these_pourquoi": "thesis_why",
+        "these_synthese": "thesis_synthesis",
+        "these_synthèse": "thesis_synthesis",
+        "these_warnings": "thesis_warnings",
+
+        "antithese_auteur": "antithesis_author",
+        "Antithese_auteur": "antithesis_author",
+        "antithese_oeuvres": "antithesis_works",
+        "antithese_œuvres": "antithesis_works",
+        "antithese_confiance": "antithesis_confidence",
+        "antithese_pourquoi": "antithesis_why",
+        "antithese_synthese": "antithesis_synthesis",
+        "antithese_synthèse": "antithesis_synthesis",
+        "antithese_warnings": "antithesis_warnings",
+
+        "mots_cles": "keywords",
+        "mots_clés": "keywords",
+    }
+
+    migrated = dict(data)
+
+    for legacy_key, canonical_key in legacy_map.items():
+        if legacy_key in migrated and canonical_key not in migrated:
+            migrated[canonical_key] = migrated[legacy_key]
+
+    return migrated
+
+
+def normalize_confidence(value: Any) -> str:
+    raw = sanitize_field(value).lower()
+
+    confidence_map = {
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+
+        # Legacy / French tolerance.
+        "faible": "low",
+        "moyen": "medium",
+        "élevé": "high",
+        "eleve": "high",
+        "haut": "high",
+        "haute": "high",
+    }
+
+    return confidence_map.get(raw, "low")
+
+
+def normalize_result(data: dict[str, Any]) -> dict[str, Any]:
+    data = migrate_legacy_french_keys(data)
+
+    thesis_author = sanitize_field(data.get("thesis_author"))
+    antithesis_author = sanitize_field(data.get("antithesis_author"))
+
+    if not thesis_author or not antithesis_author:
         raise ValueError(
-            f"Auteurs manquants. Le modèle a généré ces clés : {list(data.keys())}"
+            f"Missing authors. Generated keys: {list(data.keys())}"
         )
 
-    def clean_confidence(val: Any) -> str:
-        c = sanitize_field(val).lower()
-        return c if c in {"faible", "moyen", "élevé"} else "faible"
-
-    these_data = {
-        "auteur": these_auteur,
-        "œuvres": sanitize_list(data.get("these_oeuvres") or data.get("these_œuvres")),
-        "confiance": clean_confidence(data.get("these_confiance")),
-        "pourquoi_cet_auteur": sanitize_field(data.get("these_pourquoi")),
-        "synthèse": sanitize_field(
-            data.get("these_synthese") or data.get("these_synthèse")
-        ),
-        "warnings": sanitize_field(data.get("these_warnings")),
+    thesis_data = {
+        "author": thesis_author,
+        "works": sanitize_list(data.get("thesis_works")),
+        "confidence": normalize_confidence(data.get("thesis_confidence")),
+        "why": sanitize_field(data.get("thesis_why")),
+        "synthesis": sanitize_field(data.get("thesis_synthesis")),
+        "warnings": sanitize_field(data.get("thesis_warnings")),
     }
-    antithese_data = {
-        "auteur": anti_auteur,
-        "œuvres": sanitize_list(
-            data.get("antithese_oeuvres") or data.get("antithese_œuvres")
-        ),
-        "confiance": clean_confidence(data.get("antithese_confiance")),
-        "pourquoi_cet_auteur": sanitize_field(data.get("antithese_pourquoi")),
-        "synthèse": sanitize_field(
-            data.get("antithese_synthese") or data.get("antithese_synthèse")
-        ),
-        "warnings": sanitize_field(data.get("antithese_warnings")),
+
+    antithesis_data = {
+        "author": antithesis_author,
+        "works": sanitize_list(data.get("antithesis_works")),
+        "confidence": normalize_confidence(data.get("antithesis_confidence")),
+        "why": sanitize_field(data.get("antithesis_why")),
+        "synthesis": sanitize_field(data.get("antithesis_synthesis")),
+        "warnings": sanitize_field(data.get("antithesis_warnings")),
     }
 
     return {
-        "these": these_data,
-        "antithese": antithese_data,
-        "mots_clés": sanitize_list(data.get("mots_cles") or data.get("mots_clés")),
+        "thesis": thesis_data,
+        "antithesis": antithesis_data,
+        "keywords": sanitize_list(data.get("keywords")),
     }
 
 
-def render_markdown(source_title: str, data: dict[str, Any]) -> str:
-    keywords = ", ".join(data["mots_clés"]) if data["mots_clés"] else "Non spécifié"
+AUTHOR_MIRROR_LABELS = {
+    "english": {
+        "source_note": "Source note",
+        "keywords": "Keywords",
+        "not_specified": "Not specified",
+        "associated_works": "Associated works",
+        "confidence": "Confidence level",
+        "why": "Why this author?",
+        "synthesis": "Synthesis",
+        "warnings": "Reservations",
+        "thesis": "Thesis",
+        "antithesis": "Antithesis",
+        "no_warning": "No particular reservation about this suggestion.",
+        "low": "low",
+        "medium": "medium",
+        "high": "high",
+    },
+    "french": {
+        "source_note": "Note source",
+        "keywords": "Mots-clés",
+        "not_specified": "Non spécifié",
+        "associated_works": "Ouvrages associés",
+        "confidence": "Niveau de confiance",
+        "why": "Pourquoi cet auteur ?",
+        "synthesis": "Synthèse",
+        "warnings": "Réserves",
+        "thesis": "Thèse",
+        "antithesis": "Antithèse",
+        "no_warning": "Aucune réserve particulière quant à la proposition.",
+        "low": "faible",
+        "medium": "moyen",
+        "high": "élevé",
+    },
+}
+
+
+def get_author_mirror_labels(output_language: str) -> dict[str, str]:
+    output_language = sanitize_field(output_language).lower()
+
+    if output_language == "french":
+        return AUTHOR_MIRROR_LABELS["french"]
+
+    return AUTHOR_MIRROR_LABELS["english"]
+
+
+def render_markdown(
+    source_title: str,
+    data: dict[str, Any],
+    output_language: str,
+) -> str:
+    labels = get_author_mirror_labels(output_language)
+
+    keywords = (
+        ", ".join(data["keywords"])
+        if data["keywords"]
+        else labels["not_specified"]
+    )
+
+    def confidence_label(value: str) -> str:
+        return labels.get(value, value)
 
     def format_author_section(title: str, block: dict[str, Any]) -> list[str]:
-        works = " ; ".join(block["œuvres"]) if block["œuvres"] else "Non spécifié"
+        works = (
+            " ; ".join(block["works"])
+            if block["works"]
+            else labels["not_specified"]
+        )
+
         return [
-            f"## {title} : {block['auteur']}",
-            f"**Ouvrages associés :** {works}",
-            f"**Niveau de confiance :** {block['confiance']}",
+            f"## {title} : {block['author']}",
+            f"**{labels['associated_works']} :** {works}",
+            f"**{labels['confidence']} :** {confidence_label(block['confidence'])}",
             "",
-            "### Pourquoi cet auteur ?",
-            block["pourquoi_cet_auteur"] or "Non précisé.",
+            f"### {labels['why']}",
+            block["why"] or labels["not_specified"],
             "",
-            "### Synthèse",
-            block["synthèse"],
+            f"### {labels['synthesis']}",
+            block["synthesis"] or labels["not_specified"],
             "",
-            "### Réserves",
-            block["warnings"] or "Aucune réserve quant à la proposition.",
+            f"### {labels['warnings']}",
+            block["warnings"] or labels["no_warning"],
             "",
         ]
 
     parts = [
         "",
-        f"Note source : [[{source_title}]]",
-        f"Mots-clés : {keywords}",
+        f"{labels['source_note']} : [[{source_title}]]",
+        f"{labels['keywords']} : {keywords}",
         "",
         "---",
         "",
     ]
 
-    parts.extend(format_author_section("Thèse", data["these"]))
+    parts.extend(format_author_section(labels["thesis"], data["thesis"]))
     parts.extend(["---", ""])
-    parts.extend(format_author_section("Antithèse", data["antithese"]))
+    parts.extend(format_author_section(labels["antithesis"], data["antithesis"]))
 
     return "\n".join(parts)
 
@@ -277,7 +437,7 @@ def main(
 
         report_status("Scanning vault for notes...", status_callback)
         files = get_note_files(cfg)
-        logging.info("Notes source trouvées: %d", len(files))
+        logging.info("Source Notes found: %d", len(files))
 
         existing_rel_paths = {
             path.relative_to(cfg.vault_path).as_posix() for path in files
@@ -328,7 +488,13 @@ def main(
                     continue
 
                 # Generate JSON using our provider and the specific config settings
-                messages = get_messages(source_title, source_text)
+                messages = get_messages(
+                    source_title=source_title,
+                    source_text=source_text,
+                    output_language=cfg.author_output_language,
+                    custom_output_language=cfg.author_custom_output_language,
+                )
+
                 raw_result = llm_provider.generate_json(
                     messages=messages,
                     max_tokens=cfg.author_max_tokens,
@@ -337,7 +503,12 @@ def main(
                 )
 
                 result = normalize_result(raw_result)
-                md = render_markdown(source_title, result)
+
+                md = render_markdown(
+                    source_title=source_title,
+                    data=result,
+                    output_language=cfg.author_output_language,
+                )
 
                 existed_before = target_path.exists()
                 target_path.write_text(md, encoding="utf-8", newline="\n")
@@ -363,7 +534,7 @@ def main(
             except Exception as e:
                 failed += 1
                 report_status("failed", status_callback)
-                logging.exception("Erreur sur %s: %s", source_title, e)
+                logging.exception("Error on %s: %s", source_title, e)
 
         report_status("completed", status_callback)
         logging.info(
