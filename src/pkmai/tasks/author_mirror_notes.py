@@ -187,10 +187,7 @@ Expected strict flat JSON format:
   "keywords": ["keyword 1", "keyword 2"]
 }}"""
 
-    user_content = (
-        f"Note title:\n{source_title}\n\n"
-        f"Note content:\n{source_text}"
-    )
+    user_content = f"Note title:\n{source_title}\n\nNote content:\n{source_text}"
 
     return [
         {"role": "system", "content": system_instruction},
@@ -210,7 +207,6 @@ def migrate_legacy_french_keys(data: dict[str, Any]) -> dict[str, Any]:
         "these_synthese": "thesis_synthesis",
         "these_synthèse": "thesis_synthesis",
         "these_warnings": "thesis_warnings",
-
         "antithese_auteur": "antithesis_author",
         "Antithese_auteur": "antithesis_author",
         "antithese_oeuvres": "antithesis_works",
@@ -220,7 +216,6 @@ def migrate_legacy_french_keys(data: dict[str, Any]) -> dict[str, Any]:
         "antithese_synthese": "antithesis_synthesis",
         "antithese_synthèse": "antithesis_synthesis",
         "antithese_warnings": "antithesis_warnings",
-
         "mots_cles": "keywords",
         "mots_clés": "keywords",
     }
@@ -241,7 +236,6 @@ def normalize_confidence(value: Any) -> str:
         "low": "low",
         "medium": "medium",
         "high": "high",
-
         # Legacy / French tolerance.
         "faible": "low",
         "moyen": "medium",
@@ -261,9 +255,7 @@ def normalize_result(data: dict[str, Any]) -> dict[str, Any]:
     antithesis_author = sanitize_field(data.get("antithesis_author"))
 
     if not thesis_author or not antithesis_author:
-        raise ValueError(
-            f"Missing authors. Generated keys: {list(data.keys())}"
-        )
+        raise ValueError(f"Missing authors. Generated keys: {list(data.keys())}")
 
     thesis_data = {
         "author": thesis_author,
@@ -343,9 +335,7 @@ def render_markdown(
     labels = get_author_mirror_labels(output_language)
 
     keywords = (
-        ", ".join(data["keywords"])
-        if data["keywords"]
-        else labels["not_specified"]
+        ", ".join(data["keywords"]) if data["keywords"] else labels["not_specified"]
     )
 
     def confidence_label(value: str) -> str:
@@ -353,9 +343,7 @@ def render_markdown(
 
     def format_author_section(title: str, block: dict[str, Any]) -> list[str]:
         works = (
-            " ; ".join(block["works"])
-            if block["works"]
-            else labels["not_specified"]
+            " ; ".join(block["works"]) if block["works"] else labels["not_specified"]
         )
 
         return [
