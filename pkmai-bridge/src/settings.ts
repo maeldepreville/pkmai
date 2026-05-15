@@ -125,7 +125,7 @@ export const DEFAULT_SETTINGS: PkmAiSettings = {
 	vault: {
 		path: '',
 		notes_root_dir: '',
-		ignored_dirs: '.obsidian,Templates,Archive,logs,data,Auteurs Miroirs'
+		ignored_dirs: '.obsidian,Templates,Archive,logs,data,Mirror Authors'
 	},
 	auto_links: {
 		enabled: true,
@@ -178,6 +178,28 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		);
 
 		return this.app.vault.adapter.getResourcePath(vaultRelativePath);
+	}
+
+	private ensureIgnoredDir(dirName: string): void {
+		const normalizedDir = dirName.trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+
+		if (!normalizedDir) {
+			return;
+		}
+
+		const ignoredDirs = this.plugin.settings.vault.ignored_dirs
+			.split(',')
+			.map((item: string) => item.trim())
+			.filter((item: string) => item.length > 0);
+
+		const alreadyExists = ignoredDirs.some(
+			(item: string) => item.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '') === normalizedDir
+		);
+
+		if (!alreadyExists) {
+			ignoredDirs.push(normalizedDir);
+			this.plugin.settings.vault.ignored_dirs = ignoredDirs.join(',');
+		}
 	}
 
 	private createInfoPanel(
@@ -519,14 +541,29 @@ export class PkmAiSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
 			.setName('Output Directory')
-			.setDesc('Directory name to store the generated notes.')
-			.addText(text => text
-				.setValue(this.plugin.settings.author_mirror.output_dir)
-				.onChange(async (value) => {
-					this.plugin.settings.author_mirror.output_dir = value;
+			.setDesc('Folder where generated Author Mirror notes will be created.')
+			.addText((text) => {
+				text
+					.setPlaceholder('Mirror Authors')
+					.setValue(this.plugin.settings.author_mirror.output_dir)
+					.onChange(async (value) => {
+						this.plugin.settings.author_mirror.output_dir = value.trim();
+						await this.plugin.saveSettings();
+					});
+
+				text.inputEl.addEventListener('blur', async () => {
+					const finalValue = text.getValue().trim();
+
+					this.plugin.settings.author_mirror.output_dir = finalValue;
+
+					if (finalValue) {
+						this.ensureIgnoredDir(finalValue);
+					}
+
 					await this.plugin.saveSettings();
-				})
-			);
+					this.display();
+				});
+			});
 
 		new Setting(containerEl)
 			.setClass('pkmai-setting-card')
