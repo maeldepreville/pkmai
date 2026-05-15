@@ -9,7 +9,7 @@ This project bridges a local Python backend with an Obsidian frontend, allowing 
 
 - **Zero-Setup Standalone App:** The backend is compiled into a standalone executable for Windows and macOS. No Python environments, no Node.js, and no terminal commands are required for end-users.
 - **Semantic Auto-Links:** Scans your vault, computes embeddings for each note using `sentence-transformers`, and automatically injects contextual wikilinks to conceptually similar notes.
-- **Author Mirror (Thesis / Antithesis):** Uses a local LLM (via `llama.cpp`) to read a note and generate a dialectical response, proposing one real-world author who supports your idea and another who opposes it, complete with synthesized arguments.
+- **Author Mirror (Thesis / Antithesis):** Uses a local LLM (via `llama.cpp`) to read a note and generate a dialectical reflection, proposing one real-world author who supports the idea and another who challenges it. Generated notes can be written in English, French, or a custom language.
 - **Zero-Friction AI (Auto-Download):** No need to hunt for models. The backend will automatically download and cache a highly efficient, lightweight LLM (Qwen3.5-2B) from Hugging Face on its first run. Power users can easily toggle to use their own local `.gguf` files.
 - **Obsidian Native Configuration:** Say goodbye to editing YAML files. The plugin features a comprehensive native settings menu inside Obsidian to control model paths, similarity thresholds, and ignored directories.
 - **Live Status Polling:** Features a dynamic UI progress tracker in the Obsidian status bar so you always know what the background engine is processing.
@@ -89,7 +89,7 @@ npm run build
 
 Once the plugin is installed and enabled, the TypeScript bridge will **automatically launch the background AI server** whenever Obsidian opens, and safely shut it down when Obsidian closes.
 
-- Open the PKM AI settings in Obsidian to set your Vault Path and toggle your preferred AI model.
+- Open the PKM AI settings in Obsidian to configure the optional notes root directory, ignored folders, model settings, language preferences, and task behavior.
 - Click the link or user icons in the Obsidian sidebar to trigger the respective background processes.
 - Watch the bottom-right status bar for live polling updates (e.g., Downloading Model... ➔ Generating... ➔ Complete!).
 
